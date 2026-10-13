@@ -1,0 +1,6 @@
+# /etc/cron.d/telegram-automation
+# The ONLY cron entry the platform needs. Laravel's scheduler (routes/console.php)
+# polls for due campaigns every 10 seconds, runs crash recovery every minute,
+# checks bot tokens hourly and prunes old failed jobs. Campaign timing lives in
+# the database; no per-campaign cron jobs are ever created.
+* * * * * www-data cd /var/www/telegram-automation && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
