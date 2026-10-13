@@ -602,8 +602,14 @@ class Wizard extends Component
 
         if ($this->step >= 9) {
             try {
-                // Without repeat, a campaign posts each item once: never show more runs than items.
-                $runs = $this->repeat_mode === RepeatMode::None->value ? min(6, count($this->items)) : 6;
+                // Never preview more runs than will happen: once per item per cycle, cycles = 1 + repeats.
+                $repeat = RepeatMode::from($this->repeat_mode);
+                $cycles = match (true) {
+                    $repeat === RepeatMode::None => 1,
+                    $repeat->supportsLimit() && $this->repeat_limit !== '' => 1 + (int) $this->repeat_limit,
+                    default => PHP_INT_MAX,
+                };
+                $runs = (int) min(6, count($this->items) * min($cycles, 6));
                 $preview = $runs > 0 ? app(ScheduleCalculator::class)->preview($this->draftCampaign(), $runs) : [];
             } catch (\Throwable) {
                 $previewError = 'Could not calculate run times — check the schedule.';

@@ -110,6 +110,29 @@ class CampaignManagementTest extends TestCase
     }
 
     #[Test]
+    public function the_review_step_previews_only_the_runs_that_will_happen(): void
+    {
+        $destination = TelegramDestination::factory()->create();
+        $content = Content::factory()->create();
+        $this->actingAs(User::factory()->admin()->create());
+
+        $wizard = Livewire::test(Wizard::class)
+            ->set('name', 'Every minute')->call('next')
+            ->set('bot_id', (string) $destination->bot_id)->call('next')
+            ->set('destination_id', (string) $destination->id)->call('next')
+            ->call('addContent', $content->id)->call('next')
+            ->call('next')
+            ->set('trigger_type', 'interval')->call('next')
+            ->set('interval_preset', '60')->call('next')
+            ->set('repeat_mode', 'immediate')->set('repeat_limit', '4')->call('next');
+
+        // 1 item × (1 + 4 repeats) = 5 posts.
+        $wizard->assertViewHas('previewRuns', fn (array $runs) => count($runs) === 5);
+
+        $wizard->set('repeat_mode', 'none')->assertViewHas('previewRuns', fn (array $runs) => count($runs) === 1);
+    }
+
+    #[Test]
     public function the_wizard_reorders_items_by_drag_and_drop(): void
     {
         [$a, $b, $c] = Content::factory()->count(3)->create()->all();
