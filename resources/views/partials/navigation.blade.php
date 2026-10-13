@@ -31,11 +31,16 @@
             ['Settings', 'settings.index', 'cog', P::SETTINGS_MANAGE, ['settings.*']],
             ['System Health', 'system-health', 'heart', P::SYSTEM_HEALTH, ['system-health']],
         ],
+        'Help' => [
+            ['User Guide', 'help.guide', 'info', null, ['help.guide']],
+            ['API Docs', 'help.api', 'document', null, ['help.api']],
+        ],
     ];
 @endphp
 
 @foreach ($sections as $heading => $links)
-    @php $visible = array_filter($links, fn ($l) => auth()->user()->can($l[3])); @endphp
+    {{-- A null permission means the link is open to every signed-in user. --}}
+    @php $visible = array_filter($links, fn ($l) => $l[3] === null || auth()->user()->can($l[3])); @endphp
     @if ($visible)
         <div>
             @if ($heading)

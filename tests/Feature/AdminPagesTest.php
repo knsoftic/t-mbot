@@ -23,7 +23,7 @@ class AdminPagesTest extends TestCase
         return collect([
             '/dashboard', '/bots', '/channels', '/groups', '/destinations', '/contents', '/contents/create', '/tags',
             '/campaigns', '/campaigns/create', '/schedules', '/logs', '/failed-jobs', '/audit-logs', '/users', '/roles',
-            '/settings', '/system-health', '/profile', '/notifications',
+            '/settings', '/system-health', '/profile', '/notifications', '/help', '/help/api',
         ])->mapWithKeys(fn ($url) => [$url => [$url]])->all();
     }
 
@@ -59,6 +59,10 @@ class AdminPagesTest extends TestCase
         $this->get('/roles')->assertForbidden();
         $this->get('/settings')->assertForbidden();
         $this->get('/audit-logs')->assertForbidden();
+
+        // Help pages are open to every signed-in user.
+        $this->get('/help')->assertOk()->assertSee('Quick start');
+        $this->get('/help/api')->assertOk()->assertSee(url('/api'));
     }
 
     #[Test]

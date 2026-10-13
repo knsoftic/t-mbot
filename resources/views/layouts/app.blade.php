@@ -53,6 +53,10 @@
                 <x-icon name="clock" class="size-4" /> {{ display_tz() }}
             </span>
 
+            <a href="{{ route('help.guide') }}" wire:navigate class="btn-icon" title="User Guide" aria-label="User Guide">
+                <x-icon name="info" class="size-5" />
+            </a>
+
             <button type="button" class="btn-icon" x-on:click="$store.theme.toggle()" aria-label="Toggle dark mode">
                 <x-icon name="moon" class="size-5" x-show="!$store.theme.dark" />
                 <x-icon name="sun" class="size-5" x-show="$store.theme.dark" x-cloak />

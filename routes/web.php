@@ -11,6 +11,7 @@ use App\Livewire\Contents;
 use App\Livewire\Dashboard;
 use App\Livewire\Destinations;
 use App\Livewire\FailedJobs;
+use App\Livewire\Help;
 use App\Livewire\Notifications;
 use App\Livewire\PostingLogs;
 use App\Livewire\Profile;
@@ -87,4 +88,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     // System
     Route::livewire('/settings', Settings\Index::class)->middleware('can:'.P::SETTINGS_MANAGE)->name('settings.index');
     Route::livewire('/system-health', SystemHealth\Index::class)->middleware('can:'.P::SYSTEM_HEALTH)->name('system-health');
+
+    // Help (available to every signed-in user)
+    Route::livewire('/help', Help\Guide::class)->name('help.guide');
+    Route::livewire('/help/api', Help\ApiReference::class)->name('help.api');
 });
