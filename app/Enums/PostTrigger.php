@@ -12,4 +12,5 @@ enum PostTrigger: string
     case QuickSend = 'quick_send';
     case Welcome = 'welcome';
     case Invite = 'invite';
+    case AutoQueue = 'auto_queue';
 }

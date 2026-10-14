@@ -9,6 +9,7 @@ use App\Http\Controllers\ContentMediaController;
 use App\Http\Controllers\MemberImportFileController;
 use App\Livewire\Admin;
 use App\Livewire\AuditLogs;
+use App\Livewire\AutoQueues;
 use App\Livewire\Billing;
 use App\Livewire\Bots;
 use App\Livewire\Campaigns;
@@ -105,6 +106,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::livewire('/campaigns/{campaign}/edit', Campaigns\Wizard::class)->middleware('can:'.P::CAMPAIGNS_MANAGE)->name('campaigns.edit');
     Route::livewire('/campaigns/{campaign}', Campaigns\Show::class)->middleware('can:'.P::CAMPAIGNS_VIEW)->name('campaigns.show');
     Route::livewire('/schedules', Schedules\Index::class)->middleware('can:'.P::CAMPAIGNS_VIEW)->name('schedules.index');
+    Route::livewire('/auto-queue', AutoQueues\Index::class)->middleware('can:'.P::CAMPAIGNS_VIEW)->name('auto-queues.index');
     Route::livewire('/quick-send', QuickSend\Index::class)->middleware('can:'.P::QUICK_SEND)->name('quick-send');
 
     // Monitoring

@@ -19,6 +19,12 @@ Schedule::command('campaigns:dispatch-due')
     ->withoutOverlapping(2)
     ->runInBackground();
 
+// Auto Queues: post the next library item at each posting time.
+Schedule::command('auto-queues:dispatch-due')
+    ->everyTenSeconds()
+    ->withoutOverlapping(2)
+    ->runInBackground();
+
 // Repair state after crashes: stale "processing" items, lost schedules.
 Schedule::command('campaigns:recover')
     ->everyMinute()

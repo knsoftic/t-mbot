@@ -22,6 +22,7 @@
         ],
         'Automation' => [
             ['Quick Send', 'quick-send', 'send', P::QUICK_SEND, ['quick-send']],
+            ['Auto Queue', 'auto-queues.index', 'refresh', P::CAMPAIGNS_VIEW, ['auto-queues.*']],
             ['Campaigns', 'campaigns.index', 'bolt', P::CAMPAIGNS_VIEW, ['campaigns.*']],
             ['Schedules', 'schedules.index', 'calendar', P::CAMPAIGNS_VIEW, ['schedules.*']],
         ],

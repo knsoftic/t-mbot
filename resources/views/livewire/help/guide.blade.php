@@ -230,6 +230,18 @@ ollama run qwen2.5:1.5b "Write one short friendly Telegram post about Monday mot
             </x-docs.section>
 
             {{-- Welcome DMs --}}
+            <x-docs.section id="auto-queue" title="Auto Queue (ek dafa set, library khud post ho)" icon="refresh">
+                <p>Channel aur posting ke times <strong>sirf ek dafa</strong> set karein. Har time par Content Library ka <strong>agla content</strong> khud us channel par chala jata hai. Library mein naya content daalein to woh khud line mein lag jata hai; saara content ek baar post ho jaye to <strong>shuru se dobara</strong> (Round 2, 3…).</p>
+                <x-docs.steps>
+                    <li>Sidebar → <a href="{{ route('auto-queues.index') }}" wire:navigate>Automation → Auto Queue</a> → <strong>New auto queue</strong>.</li>
+                    <li>Bot aur channel / group chunein.</li>
+                    <li>Posting times likhein (jaise 09:00, 14:00, 20:00; <strong>Add time</strong> se aur), din chunein aur timezone check karein.</li>
+                    <li>Chahein to sirf ek tag ka content chunein (<strong>Which content</strong>), aur tarteeb: purana pehle, naya pehle ya random → <strong>Save</strong>.</li>
+                </x-docs.steps>
+                <p>Card par <strong>Coming up</strong> mein agle posts ka waqt aur content dikhta hai, aur <strong>Last posts</strong> mein natija. <strong>Post next now</strong> agla content foran bhej deta hai (regular times wahi rehte hain). <strong>Pause</strong> se sab ruk jata hai.</p>
+                <x-docs.callout type="info">Sirf <strong>active</strong> content post hota hai. Kisi content ko line se nikalna ho to Content Library mein use deactivate kar dein. Agar server kisi waqt band raha ho to 15 minute se zyada late post nahi kiya jata (ghalat waqt par post na ho), woh time skip hota hai aur card par wajah likhi aati hai. Plan ki posting limit poori ho to bhi time skip hota hai.</x-docs.callout>
+            </x-docs.section>
+
             <x-docs.section id="member-import" title="Member import (list se members lana)" icon="users">
                 <x-docs.callout type="warning" title="Telegram ka qanoon">Bot kisi ko group / channel mein <strong>add nahi kar sakta</strong>. Personal accounts se bulk add Telegram ke qawaneen ke khilaf hai aur accounts ban ho jate hain, is liye yeh panel aisa kabhi nahi karta. Har shakhs <strong>khud join request</strong> bhejta hai, aur sirf list walon ki request khud approve hoti hai.</x-docs.callout>
                 <x-docs.steps>

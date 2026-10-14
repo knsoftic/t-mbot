@@ -4,6 +4,7 @@ namespace App\Jobs\Middleware;
 
 use App\Jobs\ApproveJoinRequestJob;
 use App\Jobs\ProcessTelegramUpdateJob;
+use App\Jobs\SendAutoQueuePostJob;
 use App\Jobs\SendQuickMessageJob;
 use App\Jobs\SendTelegramContentJob;
 use App\Services\PostingService;
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 class TelegramRateLimit
 {
-    public function handle(SendTelegramContentJob|SendQuickMessageJob|ProcessTelegramUpdateJob|ApproveJoinRequestJob $job, Closure $next): void
+    public function handle(SendTelegramContentJob|SendQuickMessageJob|ProcessTelegramUpdateJob|ApproveJoinRequestJob|SendAutoQueuePostJob $job, Closure $next): void
     {
         $now = now()->getTimestamp();
         $cooldownUntil = (int) Cache::get(PostingService::cooldownKey($job->botId), 0);
