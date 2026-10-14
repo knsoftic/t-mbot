@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Middleware;
 
+use App\Jobs\SendQuickMessageJob;
 use App\Jobs\SendTelegramContentJob;
 use App\Services\PostingService;
 use App\Services\SettingsService;
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 class TelegramRateLimit
 {
-    public function handle(SendTelegramContentJob $job, Closure $next): void
+    public function handle(SendTelegramContentJob|SendQuickMessageJob $job, Closure $next): void
     {
         $now = now()->getTimestamp();
         $cooldownUntil = (int) Cache::get(PostingService::cooldownKey($job->botId), 0);

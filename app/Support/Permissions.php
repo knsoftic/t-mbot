@@ -32,6 +32,8 @@ final class Permissions
 
     public const CAMPAIGNS_OPERATE = 'campaigns.operate';
 
+    public const QUICK_SEND = 'quick-send.use';
+
     public const LOGS_VIEW = 'logs.view';
 
     public const FAILED_JOBS_MANAGE = 'failed-jobs.manage';
@@ -68,6 +70,7 @@ final class Permissions
             self::CAMPAIGNS_VIEW => ['name' => 'View campaigns', 'group' => 'Automation', 'description' => 'See campaigns, schedules and progress.'],
             self::CAMPAIGNS_MANAGE => ['name' => 'Manage campaigns', 'group' => 'Automation', 'description' => 'Create, edit and delete campaigns and sequences.'],
             self::CAMPAIGNS_OPERATE => ['name' => 'Operate campaigns', 'group' => 'Automation', 'description' => 'Activate, run now, pause, resume, stop, restart, skip and retry.'],
+            self::QUICK_SEND => ['name' => 'Quick Send', 'group' => 'Automation', 'description' => 'Save bot → channel/group targets and send typed messages to them instantly.'],
             self::LOGS_VIEW => ['name' => 'View posting logs', 'group' => 'Monitoring', 'description' => 'See every posting attempt.'],
             self::FAILED_JOBS_MANAGE => ['name' => 'Manage failed jobs', 'group' => 'Monitoring', 'description' => 'Inspect, retry and delete failed queue jobs.'],
             self::AUDIT_VIEW => ['name' => 'View audit log', 'group' => 'Monitoring', 'description' => 'See who changed what.'],
@@ -94,6 +97,7 @@ final class Permissions
             self::DESTINATIONS_VIEW, self::DESTINATIONS_MANAGE,
             self::CONTENTS_VIEW, self::CONTENTS_MANAGE,
             self::CAMPAIGNS_VIEW, self::CAMPAIGNS_MANAGE, self::CAMPAIGNS_OPERATE,
+            self::QUICK_SEND,
             self::LOGS_VIEW,
         ];
     }
@@ -111,6 +115,7 @@ final class Permissions
             self::DESTINATIONS_VIEW, self::DESTINATIONS_MANAGE,
             self::CONTENTS_VIEW, self::CONTENTS_MANAGE,
             self::CAMPAIGNS_VIEW, self::CAMPAIGNS_MANAGE, self::CAMPAIGNS_OPERATE,
+            self::QUICK_SEND,
             self::LOGS_VIEW, self::FAILED_JOBS_MANAGE,
             self::SYSTEM_HEALTH,
             self::ACCOUNTS_VIEW_ALL, self::ORDERS_MANAGE,

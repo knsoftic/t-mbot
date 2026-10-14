@@ -19,6 +19,7 @@ class Guide extends Component
         'destinations' => 'Channels aur Groups',
         'content' => 'Content Library',
         'ai' => 'AI se post likhna (offline)',
+        'quick-send' => 'Quick Send',
         'campaign-wizard' => 'Campaign banana',
         'triggers' => 'Trigger types',
         'campaign-run' => 'Campaign chalana',

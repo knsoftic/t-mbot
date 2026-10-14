@@ -56,12 +56,14 @@
                                     <td>
                                         <div class="flex items-center gap-2">
                                             <x-content-icon :type="$log->content?->type" class="size-7" />
-                                            <span class="max-w-[14rem] truncate text-sm">{{ $log->content?->title ?? '—' }}</span>
+                                            <span class="max-w-[14rem] truncate text-sm" title="{{ $log->message }}">{{ $log->content?->title ?? ($log->message ? str($log->message)->squish()->limit(60) : '—') }}</span>
                                         </div>
                                     </td>
                                     <td class="hidden text-sm lg:table-cell">
                                         @if ($log->campaign)
                                             <a href="{{ route('campaigns.show', $log->campaign_id) }}" wire:navigate class="hover:text-brand-600">{{ $log->campaign->name }}</a>
+                                        @elseif ($log->trigger === \App\Enums\PostTrigger::QuickSend)
+                                            <a href="{{ route('quick-send', ['target' => $log->quick_send_target_id]) }}" wire:navigate class="hover:text-brand-600">Quick Send</a>
                                         @else — @endif
                                     </td>
                                     <td class="hidden text-xs md:table-cell">
@@ -112,6 +114,12 @@
                     </div>
                 @endforeach
             </dl>
+            @if ($detail->message)
+                <div class="mt-4">
+                    <div class="label">Message</div>
+                    <div class="whitespace-pre-line break-words rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800/60">{{ $detail->message }}</div>
+                </div>
+            @endif
             @if ($detail->error_message)
                 <div class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">{{ $detail->error_message }}</div>
             @endif

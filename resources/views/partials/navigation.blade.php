@@ -19,6 +19,7 @@
             ['Categories / Tags', 'tags.index', 'tag', P::CONTENTS_VIEW, ['tags.*']],
         ],
         'Automation' => [
+            ['Quick Send', 'quick-send', 'send', P::QUICK_SEND, ['quick-send']],
             ['Campaigns', 'campaigns.index', 'bolt', P::CAMPAIGNS_VIEW, ['campaigns.*']],
             ['Schedules', 'schedules.index', 'calendar', P::CAMPAIGNS_VIEW, ['schedules.*']],
         ],

@@ -35,6 +35,8 @@ CONTENT → SEQUENCE → CAMPAIGN → BOT → DESTINATION → TRIGGER/SCHEDULE �
 | **Channels & groups** | Channels, groups, supergroups by numeric ID, `@username` or `t.me` link. *Test message* runs `getChat` + `getChatMember` (checks the bot is an admin with **Post messages**) and sends a message. |
 | **Content library** | Text, image, video, document, audio, animation/GIF. Media by **HTTPS URL**, **upload** (local or S3) or **Telegram file_id**. HTML / MarkdownV2 formatting, live Telegram-style preview, tags, search, filters, duplicate, activate/deactivate. |
 | **Media efficiency** | After the first post, the Telegram `file_id` is cached **per bot** and reused — URLs are not downloaded again and files are not re-uploaded. |
+| **Quick Send** | Save a bot + channel/group pair once (with formatting / silent / no-preview / protected defaults), then type a message and press Send (or Ctrl+Enter). Delivered through the Telegram queue with flood control, shown live (Sending → Sent / Failed), logged, and counted against plan sending limits. |
+| **Landing page** | Public homepage at `/` (features, how it works, pricing, FAQ) for visitors; signed-in users are sent to the dashboard. |
 | **Campaigns** | 10-step wizard, drag-and-drop sequence builder, sequential or random order, test mode (posts to a test chat), per-campaign timezone. |
 | **Triggers** | Manual (Run Now), Scheduled (exact date/time per item), Interval (1 min … 24 h or custom, e.g. 37 min), Fixed times, Daily, Weekly. |
 | **Controls** | Run Now, Pause, Resume (continues from the next item), Stop, Restart (from item #1, history kept), Skip, Retry item. |

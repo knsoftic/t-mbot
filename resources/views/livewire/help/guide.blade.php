@@ -217,6 +217,18 @@ ollama run qwen2.5:1.5b "Write one short friendly Telegram post about Monday mot
                 <p>Doosra model aazmana ho: server par <code>ollama pull &lt;naam&gt;</code>, phir Settings → AI mein model ka naam badal dein. <code>qwen2.5:1.5b</code> (~1 GB RAM) English mein achha aur tez hai; Urdu / Roman Urdu / Hindi behtar chahiye to <code>qwen2.5:3b</code> (~2 GB RAM, takreeban do guna dheere) aazmayein. 8 GB RAM wale server par is se bara model na lagayein. "Thinking" models (jaise qwen3 ke reasoning versions) post ki jagah apni soch likhte hain; panel unhein pakar kar error dikhata hai.</p>
             </x-docs.section>
 
+            {{-- Quick Send --}}
+            <x-docs.section id="quick-send" title="Quick Send (foran message)" icon="send">
+                <p>Jab koi message <strong>abhi</strong> bhejna ho to campaign banane ki zaroorat nahi. Bot + channel/group ka joda ek dafa save karein, phir sirf likhein aur Send dabayein.</p>
+                <x-docs.steps>
+                    <li>Sidebar → <a href="{{ route('quick-send') }}" wire:navigate>Automation → Quick Send</a> → <strong>New target</strong>.</li>
+                    <li>Bot chunein, phir us bot ka channel ya group. Naam khud bhar jata hai (badal sakte hain). Chahein to formatting (HTML), silent, link preview band, ya forward se hifazat on karein → <strong>Save target</strong>.</li>
+                    <li>Bayen taraf <strong>Send to</strong> list se target chunein, message likhein aur <strong>Send</strong> dabayein (ya <span class="kbd-pill">Ctrl</span> + <span class="kbd-pill">Enter</span>).</li>
+                    <li>Neeche foran <strong>Sent</strong> (Telegram message number ke saath) ya ghalti ki wajah dikhti hai. Haal ke messages usi page par, aur sab <a href="{{ route('logs.index') }}" wire:navigate>Posting Logs</a> mein.</li>
+                </x-docs.steps>
+                <x-docs.callout type="info">Quick Send bhi queue ke zariye jata hai (aam taur par 1–2 second), Telegram ki flood limit ka khayal rakhta hai aur plan ki daily / weekly / monthly posting limit mein ginta hai. Network ghalti par khud dobara nahi bhejta, taake message do baar na jaye.</x-docs.callout>
+            </x-docs.section>
+
             {{-- 7. Campaign wizard --}}
             <x-docs.section id="campaign-wizard" title="7. Campaign banana (10 steps)" icon="bolt">
                 <p>Campaign batati hai: <strong>kaunsa bot</strong>, <strong>kis chat mein</strong>, <strong>kaunsa content kis tarteeb se</strong>, aur <strong>kab</strong>. <a href="{{ route('campaigns.create') }}" wire:navigate>Campaigns → New campaign</a> kholein. Upar wali patti se kisi bhi pichle step par wapas ja sakte hain.</p>

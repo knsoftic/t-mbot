@@ -9,4 +9,5 @@ enum PostTrigger: string
     case Schedule = 'schedule';
     case Manual = 'manual';
     case Retry = 'retry';
+    case QuickSend = 'quick_send';
 }

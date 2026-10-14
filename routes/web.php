@@ -19,17 +19,29 @@ use App\Livewire\Help;
 use App\Livewire\Notifications;
 use App\Livewire\PostingLogs;
 use App\Livewire\Profile;
+use App\Livewire\QuickSend;
 use App\Livewire\Roles;
 use App\Livewire\Schedules;
 use App\Livewire\Settings;
 use App\Livewire\SystemHealth;
 use App\Livewire\Tags;
 use App\Livewire\Users;
+use App\Models\PaymentMethod;
 use App\Models\Plan;
+use App\Services\SettingsService;
 use App\Support\Permissions as P;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/branding/logo', BrandingLogoController::class)->name('branding.logo');
+
+// Public landing page; signed-in users go straight to their dashboard.
+Route::get('/', fn () => auth()->check()
+    ? redirect()->route('dashboard')
+    : view('landing', [
+        'plans' => Plan::query()->forSale()->get(),
+        'paymentMethods' => PaymentMethod::query()->available()->pluck('name'),
+        'registration' => (bool) app(SettingsService::class)->get('registration.enabled'),
+    ]))->name('home');
 
 // Public plan list (visitors and signed-in users).
 Route::get('/pricing', fn () => view('pricing', ['plans' => Plan::query()->forSale()->get()]))->name('pricing');
@@ -62,7 +74,6 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth', 'active'])->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
-    Route::redirect('/', '/dashboard');
     Route::livewire('/dashboard', Dashboard::class)->name('dashboard');
     Route::livewire('/profile', Profile::class)->name('profile');
     Route::livewire('/notifications', Notifications::class)->name('notifications');
@@ -86,6 +97,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::livewire('/campaigns/{campaign}/edit', Campaigns\Wizard::class)->middleware('can:'.P::CAMPAIGNS_MANAGE)->name('campaigns.edit');
     Route::livewire('/campaigns/{campaign}', Campaigns\Show::class)->middleware('can:'.P::CAMPAIGNS_VIEW)->name('campaigns.show');
     Route::livewire('/schedules', Schedules\Index::class)->middleware('can:'.P::CAMPAIGNS_VIEW)->name('schedules.index');
+    Route::livewire('/quick-send', QuickSend\Index::class)->middleware('can:'.P::QUICK_SEND)->name('quick-send');
 
     // Monitoring
     Route::livewire('/logs', PostingLogs\Index::class)->middleware('can:'.P::LOGS_VIEW)->name('logs.index');

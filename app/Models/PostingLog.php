@@ -12,13 +12,21 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'user_id', 'campaign_id', 'campaign_item_id', 'bot_id', 'destination_id', 'content_id', 'status', 'trigger',
+    'user_id', 'campaign_id', 'campaign_item_id', 'bot_id', 'destination_id', 'content_id', 'message', 'quick_send_target_id', 'status', 'trigger',
     'is_test', 'chat_id', 'cycle', 'attempts', 'telegram_message_id', 'scheduled_at', 'api_called_at',
     'sent_at', 'duration_ms', 'error_code', 'error_message', 'response_data',
 ])]
 class PostingLog extends Model
 {
     use BelongsToAccount;
+
+    /**
+     * @return BelongsTo<QuickSendTarget, $this>
+     */
+    public function quickSendTarget(): BelongsTo
+    {
+        return $this->belongsTo(QuickSendTarget::class);
+    }
 
     protected function casts(): array
     {
