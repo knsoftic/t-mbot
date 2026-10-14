@@ -8,6 +8,7 @@ use App\Livewire\Contents\Form;
 use App\Livewire\Settings\Index as Settings;
 use App\Models\User;
 use App\Services\Ai\AiException;
+use App\Services\Ai\OllamaTextGenerator;
 use App\Services\Ai\PostWriter;
 use App\Services\HealthService;
 use App\Services\SettingsService;
@@ -121,6 +122,39 @@ class AiDraftTest extends TestCase
         $this->assertSame('Line one', $writer->clean("```\nLine one\n```", 4096));
         $this->assertSame('Good morning!', $writer->clean("<think>\nThe user wants a greeting.\n</think>\n\nGood morning!", 4096));
         $this->assertSame(1024, mb_strlen($writer->clean(str_repeat('a', 3000), 1024)));
+    }
+
+    #[Test]
+    public function markdown_and_unwanted_hashtags_are_removed(): void
+    {
+        $writer = app(PostWriter::class);
+        $raw = "## Weekend Tip\n\nStart your day with **a short walk** 🚶 and __more water__ 💧!\n\n#HealthySunday #WalkAndDrink";
+
+        $this->assertSame("Weekend Tip\n\nStart your day with a short walk 🚶 and more water 💧!", $writer->clean($raw, 4096, hashtags: false));
+        $this->assertStringEndsWith('#HealthySunday #WalkAndDrink', $writer->clean($raw, 4096, hashtags: true));
+        $this->assertSame('Stay hydrated 💧', $writer->clean('Stay hydrated 💧 #health #water', 4096, hashtags: false));
+    }
+
+    #[Test]
+    public function a_cut_off_answer_ends_at_the_last_finished_sentence(): void
+    {
+        $this->enableAi();
+        Http::fake([self::CHAT => Http::response(['message' => ['content' => 'Aaj ka din behtareen hai! Thori walk karein. Pani zyada piy'], 'done_reason' => 'length'])]);
+
+        $this->assertSame('Aaj ka din behtareen hai! Thori walk karein.', app(TextGenerator::class)->generate('s', 'p'));
+        $this->assertSame('Great day ☀️', OllamaTextGenerator::dropUnfinishedSentence('Great day ☀️ and then we'));
+    }
+
+    #[Test]
+    public function roman_urdu_drafts_get_a_style_example_and_a_repeat_penalty(): void
+    {
+        $this->enableAi();
+        $this->fakeAnswer('Assalam o Alaikum dosto! Weekend par walk zaroor karein. 🌿');
+
+        app(PostWriter::class)->draft(['topic' => 'Weekend walk', 'language' => 'roman_urdu']);
+
+        Http::assertSent(fn (Request $request) => str_contains($request['messages'][1]['content'], 'Roman Urdu style example')
+            && $request['options']['repeat_penalty'] > 1.1);
     }
 
     #[Test]

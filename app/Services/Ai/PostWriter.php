@@ -31,8 +31,13 @@ class PostWriter
     private const SYSTEM = <<<'TXT'
 You are a social media copywriter for a Telegram channel. Write exactly one post.
 Output only the post text: no title, no explanation, no notes, no quotation marks around it.
+Write plain text: no Markdown such as **bold**, __underline__ or # headings.
+Use simple, natural words and never repeat the same phrase.
 Never invent facts, prices, dates, statistics, links, results or guarantees that are not in the brief. If details are missing, keep the post general.
 TXT;
+
+    /** Small models write Roman Urdu much better after seeing the style once. */
+    private const ROMAN_URDU_EXAMPLE = 'Assalam o Alaikum dosto! Aaj mausam bohat khoobsurat hai, thori der bahar walk zaroor karein. Apna khayal rakhiye! 🌿';
 
     public function __construct(
         private readonly TextGenerator $generator,
@@ -62,7 +67,8 @@ TXT;
         $length = $brief['length'] ?? 'medium';
 
         $text = $this->generator->generate(self::SYSTEM, $this->prompt($brief), [
-            'temperature' => 0.7,
+            'temperature' => 0.6,
+            'repeat_penalty' => 1.18,
             'max_tokens' => match ($length) {
                 'short' => 120,
                 'long' => 450,
@@ -70,7 +76,7 @@ TXT;
             },
         ]);
 
-        return $this->clean($text, $isCaption ? 1024 : 4096);
+        return $this->clean($text, $isCaption ? 1024 : 4096, (bool) ($brief['hashtags'] ?? false));
     }
 
     /**
@@ -83,7 +89,7 @@ TXT;
         $length = self::LENGTHS[$brief['length'] ?? 'medium'] ?? self::LENGTHS['medium'];
         $isCaption = ($brief['for'] ?? 'text') === 'caption';
 
-        return implode("\n", [
+        $lines = [
             'Topic / idea: '.trim($brief['topic']),
             'Language: '.$language,
             'Tone: '.$tone,
@@ -91,17 +97,35 @@ TXT;
             'Emojis: '.(($brief['emojis'] ?? true) ? 'use a few relevant emojis' : 'no emojis'),
             'Hashtags: '.(($brief['hashtags'] ?? false) ? 'end with 3 to 5 relevant hashtags' : 'no hashtags'),
             'Format: '.($isCaption ? 'a caption shown under an image or video, under 900 characters' : 'a Telegram text message'),
-        ]);
+        ];
+
+        if (($brief['language'] ?? null) === 'roman_urdu') {
+            $lines[] = 'Roman Urdu style example (match the style, not the content): "'.self::ROMAN_URDU_EXAMPLE.'"';
+        }
+
+        return implode("\n", $lines);
     }
 
     /**
-     * Small models like to add a preamble or wrap the answer in quotes; strip that.
+     * Small models like to add a preamble, wrap the answer in quotes, use
+     * Markdown or add hashtags nobody asked for; strip all of that.
      */
-    public function clean(string $text, int $limit): string
+    public function clean(string $text, int $limit, bool $hashtags = true): string
     {
         $text = trim(str_replace("\r\n", "\n", $text));
         $text = trim(preg_replace('/<think>.*?(<\/think>|$)/su', '', $text));
         $text = preg_replace('/^```[a-z]*\n?|\n?```$/i', '', $text);
+
+        // Telegram shows Markdown markers literally in plain-text posts.
+        $text = preg_replace(['/\*\*(.+?)\*\*/su', '/__(.+?)__/su'], '$1', $text);
+        $text = preg_replace(['/\*\*/u', '/^#{1,6}\s+/mu'], '', $text);
+
+        if (! $hashtags) {
+            $text = preg_replace('/^[ \t]*(#[\p{L}\p{N}_]+[ \t]*)+$/mu', '', $text);
+            $text = preg_replace('/([ \t]+#[\p{L}\p{N}_]+)+[ \t]*$/u', '', trim($text));
+        }
+
+        $text = preg_replace("/\n{3,}/", "\n\n", $text);
 
         $lines = explode("\n", trim($text));
 

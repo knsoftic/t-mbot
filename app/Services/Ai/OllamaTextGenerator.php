@@ -41,6 +41,7 @@ class OllamaTextGenerator implements TextGenerator
             ],
             'options' => [
                 'temperature' => $options['temperature'] ?? 0.7,
+                'repeat_penalty' => $options['repeat_penalty'] ?? 1.1,
                 'num_predict' => $options['max_tokens'] ?? (int) config('ai.max_tokens'),
                 'num_ctx' => (int) config('ai.context_tokens'),
             ],
@@ -73,6 +74,19 @@ class OllamaTextGenerator implements TextGenerator
 
         if ($text === '') {
             throw filled($response->json('message.thinking')) ? AiException::thinkingOnly($model) : AiException::emptyAnswer();
+        }
+
+        return $response->json('done_reason') === 'length' ? self::dropUnfinishedSentence($text) : $text;
+    }
+
+    /**
+     * The answer hit the token limit: cut it back to the last finished sentence
+     * (or emoji / line break) so it does not end in the middle of a word.
+     */
+    public static function dropUnfinishedSentence(string $text): string
+    {
+        if (preg_match('/^(.*(?:[.!?۔…\n]|\p{So}\x{FE0F}?))/su', $text, $m) && mb_strlen(trim($m[1])) >= mb_strlen($text) * 0.4) {
+            return trim($m[1]);
         }
 
         return $text;

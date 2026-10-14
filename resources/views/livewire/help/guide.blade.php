@@ -214,7 +214,7 @@ ollama run qwen2.5:1.5b "Write one short friendly Telegram post about Monday mot
                     <li>Panel mein <a href="{{ route('settings.index', ['tab' => 'ai']) }}" wire:navigate>Settings → AI (offline)</a> → <strong>AI drafts on karein</strong> → Save → <strong>AI server check karein</strong> ("is installed" aana chahiye).</li>
                     <li><a href="{{ route('system-health') }}" wire:navigate>System Health</a> mein <strong>Local AI: Healthy</strong> dikhega.</li>
                 </x-docs.steps>
-                <p>Doosra model aazmana ho (jaise thora bara 3B): server par <code>ollama pull &lt;naam&gt;</code>, phir Settings → AI mein model ka naam badal dein. 2-core / 8 GB RAM server par 1–1.5B model ki salah hai; 3B chalega magar dheere.</p>
+                <p>Doosra model aazmana ho: server par <code>ollama pull &lt;naam&gt;</code>, phir Settings → AI mein model ka naam badal dein. <code>qwen2.5:1.5b</code> (~1 GB RAM) English mein achha aur tez hai; Urdu / Roman Urdu behtar chahiye to <code>qwen2.5:3b</code> (~2 GB RAM, takreeban do guna dheere) aazmayein. 8 GB RAM wale server par is se bara model na lagayein. "Thinking" models (jaise qwen3 ke reasoning versions) post ki jagah apni soch likhte hain; panel unhein pakar kar error dikhata hai.</p>
             </x-docs.section>
 
             {{-- 7. Campaign wizard --}}
