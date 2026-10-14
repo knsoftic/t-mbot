@@ -87,6 +87,90 @@ class AutoQueueTest extends TestCase
     }
 
     #[Test]
+    public function interval_posting_keeps_its_rhythm_inside_the_posting_hours(): void
+    {
+        $service = app(AutoQueueService::class);
+        $queue = $this->queue(null, ['mode' => 'interval', 'interval_seconds' => 1800]);
+        $local = fn (string $time) => CarbonImmutable::parse($time, self::TZ);
+
+        // Monday 08:00 → every 30 minutes from now.
+        $this->assertTrue($queue->next_run_at->equalTo($local('2026-10-19 08:30')));
+        // A post that went out a few seconds late does not shift the rhythm.
+        $this->assertTrue($service->nextSlot($queue, $local('2026-10-19 08:30:07'), $local('2026-10-19 08:30'))->equalTo($local('2026-10-19 09:00')));
+        // After downtime the next tick is used, no backlog.
+        $this->assertTrue($service->nextSlot($queue, $local('2026-10-19 09:47'), $local('2026-10-19 09:00'))->equalTo($local('2026-10-19 10:00')));
+
+        // Only between 09:00 and 22:00.
+        $queue->active_from = '09:00';
+        $queue->active_until = '22:00';
+        $this->assertTrue($service->nextSlot($queue, $local('2026-10-19 08:00'))->equalTo($local('2026-10-19 09:00')));
+        $this->assertTrue($service->nextSlot($queue, $local('2026-10-19 21:50'), $local('2026-10-19 21:50'))->equalTo($local('2026-10-20 09:00')));
+
+        // A night window runs past midnight.
+        $queue->active_from = '22:00';
+        $queue->active_until = '02:00';
+        $this->assertTrue($service->nextSlot($queue, $local('2026-10-20 01:00'), $local('2026-10-20 01:00'))->equalTo($local('2026-10-20 01:30')));
+        $this->assertTrue($service->nextSlot($queue, $local('2026-10-20 01:45'), $local('2026-10-20 01:45'))->equalTo($local('2026-10-20 22:00')));
+    }
+
+    #[Test]
+    public function intervals_respect_telegram_and_the_plan(): void
+    {
+        try {
+            $this->queue(null, ['mode' => 'interval', 'interval_seconds' => 5]);
+            $this->fail('5 seconds is faster than Telegram allows.');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('every 10 seconds', $e->getMessage());
+        }
+
+        $this->assertSame(10, $this->queue(null, ['mode' => 'interval', 'interval_seconds' => 10])->interval_seconds);
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('every 30 minute(s)');
+        $this->queue(User::factory()->customer()->create(), ['mode' => 'interval', 'interval_seconds' => 60]);
+    }
+
+    #[Test]
+    public function the_quick_buttons_fill_the_schedule(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin);
+        $bot = TelegramBot::factory()->create();
+        $channel = TelegramDestination::factory()->create(['bot_id' => $bot->id]);
+
+        $page = Livewire::test(AutoQueuePage::class)
+            ->call('create')
+            ->set('form.bot_id', (string) $bot->id)
+            ->set('form.destination_id', (string) $channel->id)
+            ->call('preset', '1m')
+            ->assertSet('form.mode', 'interval')
+            ->assertSet('form.interval_value', '1')
+            ->assertSet('form.interval_unit', 'minutes')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSee('Every minute');
+
+        $queue = AutoQueue::query()->sole();
+        $this->assertSame(60, $queue->interval_seconds);
+        $this->assertSame([], $queue->times);
+
+        $page->call('edit', $queue->id)
+            ->assertSet('form.interval_unit', 'minutes')
+            ->set('form.interval_value', '5')
+            ->set('form.interval_unit', 'seconds')
+            ->call('save')
+            ->assertHasErrors(['form.interval_value'])
+            ->call('preset', 'daily')
+            ->assertSet('form.mode', 'times')
+            ->assertSet('form.times', ['09:00'])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(['09:00'], $queue->fresh()->times);
+        $this->assertNull($queue->fresh()->interval_seconds);
+    }
+
+    #[Test]
     public function the_library_is_posted_in_order_and_starts_over(): void
     {
         $this->content(null, 'First', 30);

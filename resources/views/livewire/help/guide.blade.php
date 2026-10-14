@@ -235,11 +235,11 @@ ollama run qwen2.5:1.5b "Write one short friendly Telegram post about Monday mot
                 <x-docs.steps>
                     <li>Sidebar → <a href="{{ route('auto-queues.index') }}" wire:navigate>Automation → Auto Queue</a> → <strong>New auto queue</strong>.</li>
                     <li>Bot aur channel / group chunein.</li>
-                    <li>Posting times likhein (jaise 09:00, 14:00, 20:00; <strong>Add time</strong> se aur), din chunein aur timezone check karein.</li>
+                    <li><strong>How often</strong>: quick buttons — Every 10 sec, 30 sec, minute, 5 / 15 / 30 min, hour, 6 hours, ya Every day 09:00. Ya custom: <strong>Every … </strong> mein apna number aur seconds / minutes / hours (chahein to “Only between 09:00 and 22:00” taake raat ko post na ho), ya <strong>At set times of day</strong> mein mukarrar times (jaise 09:00, 14:00, 20:00). Din chunein aur timezone check karein.</li>
                     <li>Chahein to sirf ek tag ka content chunein (<strong>Which content</strong>), aur tarteeb: purana pehle, naya pehle ya random → <strong>Save</strong>.</li>
                 </x-docs.steps>
                 <p>Card par <strong>Coming up</strong> mein agle posts ka waqt aur content dikhta hai, aur <strong>Last posts</strong> mein natija. <strong>Post next now</strong> agla content foran bhej deta hai (regular times wahi rehte hain). <strong>Pause</strong> se sab ruk jata hai.</p>
-                <x-docs.callout type="info">Sirf <strong>active</strong> content post hota hai. Kisi content ko line se nikalna ho to Content Library mein use deactivate kar dein. Agar server kisi waqt band raha ho to 15 minute se zyada late post nahi kiya jata (ghalat waqt par post na ho), woh time skip hota hai aur card par wajah likhi aati hai. Plan ki posting limit poori ho to bhi time skip hota hai.</x-docs.callout>
+                <x-docs.callout type="info">Sirf <strong>active</strong> content post hota hai. Kisi content ko line se nikalna ho to Content Library mein use deactivate kar dein. Sab se tez <strong>har 10 second</strong> ho sakta hai: Telegram ek chat mein lagbhag 20 posts per minute hi allow karta hai (customers ke liye plan ka minimum bhi lagu hai). Agar server kisi waqt band raha ho to 15 minute se zyada late post nahi kiya jata (ghalat waqt par post na ho), woh time skip hota hai aur card par wajah likhi aati hai. Plan ki posting limit poori ho to bhi time skip hota hai.</x-docs.callout>
             </x-docs.section>
 
             <x-docs.section id="member-import" title="Member import (list se members lana)" icon="users">

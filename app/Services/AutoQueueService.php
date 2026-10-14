@@ -62,10 +62,15 @@ class AutoQueueService
             'bot_id' => ['required', 'integer', Accounts::exists('telegram_bots')],
             'destination_id' => ['required', 'integer', Accounts::exists('telegram_destinations')],
             'timezone' => ['required', 'timezone:all'],
-            'times' => ['required', 'array', 'min:1', 'max:'.self::MAX_TIMES],
+            'mode' => ['nullable', Rule::in([AutoQueue::TIMES, AutoQueue::INTERVAL])],
+            // Checked against the mode (and the plan) in save().
+            'interval_seconds' => ['nullable', 'integer', 'min:1', 'max:604800'],
+            'times' => ['array', 'max:'.self::MAX_TIMES],
             'times.*' => ['required', 'date_format:H:i', 'distinct'],
             'days' => ['array'],
             'days.*' => ['integer', 'between:1,7'],
+            'active_from' => ['nullable', 'date_format:H:i'],
+            'active_until' => ['nullable', 'date_format:H:i'],
             'tag_id' => ['nullable', 'integer', Accounts::exists('tags', softDeletes: false)],
             'order' => ['required', Rule::in(array_keys(AutoQueue::ORDERS))],
         ];
@@ -82,8 +87,34 @@ class AutoQueueService
             throw ValidationException::withMessages(['destination_id' => 'This channel / group is connected to a different bot.']);
         }
 
-        $times = collect($data['times'])->map(fn ($t) => substr((string) $t, 0, 5))->unique()->sort()->values()->all();
+        $ownerId = TelegramBot::withTrashed()->withoutGlobalScope(AccountScope::class)->whereKey($data['bot_id'])->value('user_id');
+        $mode = ($data['mode'] ?? null) ?: AutoQueue::TIMES;
+        $interval = $mode === AutoQueue::INTERVAL;
+        $times = $interval ? [] : collect($data['times'] ?? [])->map(fn ($t) => substr((string) $t, 0, 5))->unique()->sort()->values()->all();
         $days = collect($data['days'] ?? [])->map(fn ($d) => (int) $d)->unique()->sort()->values()->all();
+        $from = $interval ? (($data['active_from'] ?? null) ?: null) : null;
+        $until = $interval ? (($data['active_until'] ?? null) ?: null) : null;
+
+        if (! $interval && $times === []) {
+            throw ValidationException::withMessages(['times' => 'Add at least one posting time.']);
+        }
+
+        if ($interval) {
+            $seconds = (int) ($data['interval_seconds'] ?? 0);
+            $planMinimum = $this->limiter->minIntervalSeconds($ownerId === null ? null : (int) $ownerId);
+
+            if ($seconds < AutoQueue::MIN_INTERVAL_SECONDS) {
+                throw ValidationException::withMessages(['interval_seconds' => 'The fastest is every '.AutoQueue::MIN_INTERVAL_SECONDS.' seconds: Telegram allows only about 20 posts per minute in one chat.']);
+            }
+
+            if (Accounts::isCustomer($ownerId === null ? null : (int) $ownerId) && $seconds < $planMinimum) {
+                throw ValidationException::withMessages(['interval_seconds' => 'Your plan allows posting at most every '.intdiv($planMinimum, 60).' minute(s). Choose a longer interval or upgrade your plan.']);
+            }
+        }
+
+        if (($from === null) !== ($until === null) || ($from !== null && $from === $until)) {
+            throw ValidationException::withMessages(['active_from' => 'Set both the start and the end of the posting hours (they must differ), or leave both empty.']);
+        }
 
         if ($days === []) {
             throw ValidationException::withMessages(['days' => 'Choose at least one day.']);
@@ -93,13 +124,17 @@ class AutoQueueService
         $queue ??= new AutoQueue(['status' => AutoQueue::ACTIVE, 'created_by' => $user?->id]);
         $queue->fill([
             // Same account as the bot.
-            'user_id' => TelegramBot::withTrashed()->withoutGlobalScope(AccountScope::class)->whereKey($data['bot_id'])->value('user_id'),
+            'user_id' => $ownerId,
             'name' => trim($data['name']),
             'bot_id' => (int) $data['bot_id'],
             'destination_id' => $destination->id,
             'timezone' => $data['timezone'],
+            'mode' => $mode,
+            'interval_seconds' => $interval ? (int) $data['interval_seconds'] : null,
             'times' => $times,
             'days' => count($days) === 7 ? null : $days,
+            'active_from' => $from,
+            'active_until' => $until,
             'tag_id' => ($data['tag_id'] ?? null) ?: null,
             'order' => $data['order'],
         ]);
@@ -128,9 +163,14 @@ class AutoQueueService
 
     /**
      * The first posting time after $after (UTC), or null when no day is selected.
+     * $previous is the time just used: intervals continue from it, so they never drift.
      */
-    public function nextSlot(AutoQueue $queue, CarbonImmutable $after): ?CarbonImmutable
+    public function nextSlot(AutoQueue $queue, CarbonImmutable $after, ?CarbonImmutable $previous = null): ?CarbonImmutable
     {
+        if ($queue->isInterval()) {
+            return $this->nextIntervalSlot($queue, $after, $previous);
+        }
+
         $local = $after->setTimezone($queue->timezone);
         $times = collect($queue->times ?? [])->sort()->values();
 
@@ -161,15 +201,68 @@ class AutoQueueService
      */
     public function upcomingSlots(AutoQueue $queue, int $count): array
     {
+        $slot = $queue->next_run_at ?? $this->nextSlot($queue, CarbonImmutable::now());
         $slots = [];
-        $cursor = CarbonImmutable::now();
 
-        while (count($slots) < $count && ($slot = $this->nextSlot($queue, $cursor))) {
+        while ($slot && count($slots) < $count) {
             $slots[] = $slot;
-            $cursor = $slot;
+            $slot = $this->nextSlot($queue, $slot, $slot);
         }
 
         return $slots;
+    }
+
+    /**
+     * Every N seconds, inside the chosen days and daily hours. Missed ticks are
+     * not caught up: the next one after $after is used.
+     */
+    private function nextIntervalSlot(AutoQueue $queue, CarbonImmutable $after, ?CarbonImmutable $previous): ?CarbonImmutable
+    {
+        $step = max(AutoQueue::MIN_INTERVAL_SECONDS, (int) $queue->interval_seconds);
+        $candidate = ($previous ?? $after)->addSeconds($step);
+
+        if ($candidate->lessThanOrEqualTo($after)) {
+            $missed = intdiv((int) $candidate->diffInSeconds($after, true), $step) + 1;
+            $candidate = $candidate->addSeconds($missed * $step);
+        }
+
+        return $this->insidePostingHours($queue, $candidate);
+    }
+
+    /**
+     * $time when it is inside an allowed day and the daily posting hours,
+     * otherwise the next moment posting hours open (UTC).
+     */
+    private function insidePostingHours(AutoQueue $queue, CarbonImmutable $time): ?CarbonImmutable
+    {
+        $local = $time->setTimezone($queue->timezone);
+        $from = $queue->active_from ?? '00:00';
+
+        // Yesterday's window can run past midnight (e.g. 22:00–02:00).
+        for ($day = -1; $day <= 8; $day++) {
+            $date = $local->startOfDay()->addDays($day);
+
+            if ($queue->days && ! in_array($date->dayOfWeekIso, $queue->days, true)) {
+                continue;
+            }
+
+            $start = $date->setTimeFromTimeString($from);
+            $end = $queue->active_until ? $date->setTimeFromTimeString($queue->active_until) : $date->addDay();
+
+            if ($end->lessThanOrEqualTo($start)) {
+                $end = $end->addDay();
+            }
+
+            if ($local->greaterThanOrEqualTo($start) && $local->lessThan($end)) {
+                return $time;
+            }
+
+            if ($start->greaterThan($local)) {
+                return $start->utc();
+            }
+        }
+
+        return null;
     }
 
     // ------------------------------------------------------------------
@@ -275,7 +368,7 @@ class AutoQueueService
 
                 // Whatever happens below, the queue moves on to its next time.
                 $slot = $queue->next_run_at;
-                $queue->next_run_at = $this->nextSlot($queue, $now);
+                $queue->next_run_at = $this->nextSlot($queue, $now, $slot);
 
                 if ($slot->lessThan($now->subMinutes(self::LATE_LIMIT_MINUTES))) {
                     return $this->skip($queue, 'The '.$this->local($queue, $slot).' post was skipped: the server was not running at that time.');

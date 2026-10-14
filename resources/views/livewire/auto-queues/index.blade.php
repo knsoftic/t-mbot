@@ -35,7 +35,13 @@
                             To <strong>{{ $queue->destination?->name ?? 'deleted chat' }}</strong> via {{ $queue->bot?->name ?? 'deleted bot' }}
                         </div>
                         <div class="mt-2 flex flex-wrap items-center gap-1.5">
-                            @foreach ($queue->times as $time)
+                            @if ($queue->isInterval())
+                                <span class="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-200">{{ $queue->intervalLabel() }}</span>
+                                @if ($queue->active_from)
+                                    <span class="text-xs text-slate-500">between {{ $queue->active_from }}–{{ $queue->active_until }}</span>
+                                @endif
+                            @endif
+                            @foreach ($queue->times ?? [] as $time)
                                 <span class="rounded-md bg-brand-50 px-2 py-0.5 font-mono text-xs font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-200">{{ $time }}</span>
                             @endforeach
                             <span class="text-xs text-slate-500">· {{ $queue->days ? collect($queue->days)->map(fn ($day) => $weekdays[$day])->implode(', ') : 'Every day' }} · {{ $queue->timezone }}</span>
@@ -90,7 +96,7 @@
                             <ul class="mt-2 space-y-1.5 text-sm">
                                 @foreach ($d['upcoming'] as [$slot, $content])
                                     <li class="flex gap-2">
-                                        <span class="w-24 shrink-0 tabular-nums text-xs text-slate-500">{{ display_time($slot, 'D H:i') }}</span>
+                                        <span class="w-24 shrink-0 tabular-nums text-xs text-slate-500">{{ display_time($slot, $queue->isInterval() && $queue->interval_seconds < 60 ? 'D H:i:s' : 'D H:i') }}</span>
                                         <span class="truncate">{{ $content?->title ?? ($queue->order === 'random' ? 'Random item' : '—') }}</span>
                                     </li>
                                 @endforeach
@@ -146,21 +152,71 @@
                 </x-field>
             </div>
 
-            <div>
-                <div class="label">Posting times <span class="text-red-500">*</span></div>
-                <div class="flex flex-wrap items-center gap-2">
-                    @foreach ($form['times'] ?? [] as $i => $time)
-                        <div class="flex items-center gap-1" wire:key="t-{{ $i }}">
-                            <input type="time" wire:model="form.times.{{ $i }}" class="input w-32">
-                            @if (count($form['times']) > 1)
-                                <button type="button" wire:click="removeTime({{ $i }})" class="btn-icon" title="Remove"><x-icon name="x" class="size-4" /></button>
-                            @endif
-                        </div>
+            @php
+                $interval = ($form['mode'] ?? 'times') === 'interval';
+                $currentSeconds = (int) ($form['interval_value'] ?? 0) * (['seconds' => 1, 'minutes' => 60, 'hours' => 3600][$form['interval_unit'] ?? 'minutes'] ?? 60);
+            @endphp
+            <div class="space-y-3">
+                <div class="label">How often <span class="text-red-500">*</span></div>
+
+                {{-- Quick buttons --}}
+                <div class="flex flex-wrap gap-2">
+                    @foreach (\App\Livewire\AutoQueues\Index::PRESETS as $key => [$label, $presetMode, $seconds])
+                        @php $chosen = $presetMode === 'interval' ? ($interval && $currentSeconds === $seconds) : (! $interval && ($form['times'] ?? []) === ['09:00']); @endphp
+                        <button type="button" wire:click="preset('{{ $key }}')" @class([
+                            'rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition',
+                            'bg-brand-600 text-white ring-brand-600' => $chosen,
+                            'text-slate-700 ring-slate-300 hover:bg-slate-50 dark:text-slate-200 dark:ring-slate-600 dark:hover:bg-slate-800' => ! $chosen,
+                        ])>{{ $label }}</button>
                     @endforeach
-                    <button type="button" wire:click="addTime" class="btn btn-secondary btn-sm"><x-icon name="plus" class="size-4" /> Add time</button>
                 </div>
-                @error('form.times') <p class="error">{{ $message }}</p> @enderror
-                @foreach ($errors->get('form.times.*') as $messages) <p class="error">{{ $messages[0] }}</p> @endforeach
+
+                {{-- Custom --}}
+                <div class="inline-flex rounded-lg p-0.5 ring-1 ring-slate-200 dark:ring-slate-700">
+                    <button type="button" wire:click="$set('form.mode', 'interval')" @class(['rounded-md px-3 py-1.5 text-sm font-medium', 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-200' => $interval, 'text-slate-600 dark:text-slate-300' => ! $interval])>Every … (custom interval)</button>
+                    <button type="button" wire:click="$set('form.mode', 'times')" @class(['rounded-md px-3 py-1.5 text-sm font-medium', 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-200' => ! $interval, 'text-slate-600 dark:text-slate-300' => $interval])>At set times of day</button>
+                </div>
+
+                @if ($interval)
+                    <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/50">
+                        <div class="flex flex-wrap items-center gap-2 text-sm">
+                            <span>Post every</span>
+                            <input type="number" min="1" wire:model.live.debounce.400ms="form.interval_value" class="input w-24" aria-label="Interval">
+                            <select wire:model.live="form.interval_unit" class="input w-32" aria-label="Unit">
+                                <option value="seconds">seconds</option>
+                                <option value="minutes">minutes</option>
+                                <option value="hours">hours</option>
+                            </select>
+                        </div>
+                        @error('form.interval_value') <p class="error">{{ $message }}</p> @enderror
+                        <p class="mt-1 text-xs text-slate-500">Fastest: every {{ \App\Models\AutoQueue::MIN_INTERVAL_SECONDS }} seconds — Telegram allows only about 20 posts per minute in one chat.</p>
+
+                        <div class="mt-4 flex flex-wrap items-center gap-2 text-sm">
+                            <span>Only between</span>
+                            <input type="time" wire:model="form.active_from" class="input w-32" aria-label="From">
+                            <span>and</span>
+                            <input type="time" wire:model="form.active_until" class="input w-32" aria-label="Until">
+                            <span class="text-xs text-slate-500">(optional — e.g. 09:00 and 22:00 to stay quiet at night)</span>
+                        </div>
+                        @error('form.active_from') <p class="error">{{ $message }}</p> @enderror
+                    </div>
+                @else
+                    <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/50">
+                        <div class="flex flex-wrap items-center gap-2">
+                            @foreach ($form['times'] ?? [] as $i => $time)
+                                <div class="flex items-center gap-1" wire:key="t-{{ $i }}">
+                                    <input type="time" wire:model="form.times.{{ $i }}" class="input w-32">
+                                    @if (count($form['times']) > 1)
+                                        <button type="button" wire:click="removeTime({{ $i }})" class="btn-icon" title="Remove"><x-icon name="x" class="size-4" /></button>
+                                    @endif
+                                </div>
+                            @endforeach
+                            <button type="button" wire:click="addTime" class="btn btn-secondary btn-sm"><x-icon name="plus" class="size-4" /> Add time</button>
+                        </div>
+                        @error('form.times') <p class="error">{{ $message }}</p> @enderror
+                        @foreach ($errors->get('form.times.*') as $messages) <p class="error">{{ $messages[0] }}</p> @endforeach
+                    </div>
+                @endif
             </div>
 
             <div>
