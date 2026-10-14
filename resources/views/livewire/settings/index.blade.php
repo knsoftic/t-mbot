@@ -3,7 +3,7 @@
 
     <div class="grid gap-6 lg:grid-cols-4">
         <nav class="card h-fit p-2 lg:col-span-1">
-            @foreach (['general' => ['General', 'cog'], 'telegram' => ['Telegram', 'send'], 'queue' => ['Queue', 'list'], 'storage' => ['Storage', 'server'], 'notifications' => ['Notifications', 'bell']] as $key => [$label, $icon])
+            @foreach (['general' => ['General', 'cog'], 'telegram' => ['Telegram', 'send'], 'ai' => ['AI (offline)', 'sparkles'], 'queue' => ['Queue', 'list'], 'storage' => ['Storage', 'server'], 'notifications' => ['Notifications', 'bell']] as $key => [$label, $icon])
                 <button type="button" wire:click="$set('tab', '{{ $key }}')" @class([
                     'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium',
                     'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-200' => $tab === $key,
@@ -78,6 +78,34 @@
                 <div class="rounded-lg bg-brand-50 p-3 text-xs text-brand-900 dark:bg-brand-500/10 dark:text-brand-200">
                     <strong>Rate-limit handling is always on:</strong> when Telegram answers 429 with <span class="kbd-pill">retry_after</span>, the bot pauses for exactly that long and no requests are sent during the cooldown.
                 </div>
+            @elseif ($tab === 'ai')
+                <h2 class="card-title">AI (offline, local model)</h2>
+                <p class="text-sm text-slate-600 dark:text-slate-300">AI isi server par chalne wale model se kaam karta hai (Ollama, <span class="kbd-pill">{{ config('ai.base_url') }}</span>). Koi data bahar kisi AI company ko nahi jata aur koi API key nahi chahiye. On hone par Content form mein <strong>✨ AI se likho</strong> button aa jata hai; AI sirf draft likhta hai, post khud nahi karta.</p>
+                <label class="flex items-center gap-2 text-sm font-medium"><input type="checkbox" wire:model="form.ai.enabled" class="checkbox"> AI drafts on karein</label>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-field label="Model" for="form.ai.model" hint="Server par 'ollama pull <model>' se install kiya hua naam, jaise qwen2.5:1.5b.">
+                        <input id="form.ai.model" type="text" wire:model="form.ai.model" class="input font-mono">
+                    </x-field>
+                    <x-field label="Default zaban" for="form.ai.default_language">
+                        <select id="form.ai.default_language" wire:model="form.ai.default_language" class="input">
+                            <option value="english">English</option>
+                            <option value="urdu">اردو (Urdu)</option>
+                            <option value="roman_urdu">Roman Urdu</option>
+                        </select>
+                    </x-field>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <button type="button" wire:click="checkAi" class="btn btn-secondary" wire:loading.attr="disabled" wire:target="checkAi">
+                        <span wire:loading wire:target="checkAi"><x-spinner /></span> AI server check karein
+                    </button>
+                    @if ($aiCheck)
+                        <span @class(['text-sm', 'text-emerald-600 dark:text-emerald-400' => $aiCheck['ok'], 'text-red-600 dark:text-red-400' => ! $aiCheck['ok']])>{{ $aiCheck['message'] }}</span>
+                    @endif
+                </div>
+                @if ($aiCheck && $aiCheck['models'])
+                    <p class="text-xs text-slate-500">Installed models: @foreach ($aiCheck['models'] as $m)<span class="kbd-pill">{{ $m }}</span> @endforeach</p>
+                @endif
+                <x-docs.callout type="info">Server par Ollama install karne ka tareeqa <a href="{{ route('help.guide') }}#ai" wire:navigate class="underline">User Guide → AI</a> mein hai. 2 CPU / 8 GB RAM wale server par 1–1.5B model ki salah hai.</x-docs.callout>
             @elseif ($tab === 'queue')
                 <h2 class="card-title">Queue</h2>
                 <p class="text-sm text-slate-600 dark:text-slate-300">The queue connection is infrastructure configuration and is set in <span class="kbd-pill">.env</span> (changing it at runtime would orphan queued jobs). Current values:</p>

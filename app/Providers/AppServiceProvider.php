@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Contracts\TextGenerator;
 use App\Models\User;
+use App\Services\Ai\OllamaTextGenerator;
 use App\Services\SettingsService;
 use App\Support\Permissions;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -22,6 +24,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Scoped: queue workers get fresh settings for every job.
         $this->app->scoped(SettingsService::class);
+
+        // Local LLM used for AI drafts (Ollama today; see App\Contracts\TextGenerator).
+        $this->app->bind(TextGenerator::class, OllamaTextGenerator::class);
     }
 
     /**

@@ -18,6 +18,7 @@ class Guide extends Component
         'bots' => 'Bots',
         'destinations' => 'Channels aur Groups',
         'content' => 'Content Library',
+        'ai' => 'AI se post likhna (offline)',
         'campaign-wizard' => 'Campaign banana',
         'triggers' => 'Trigger types',
         'campaign-run' => 'Campaign chalana',

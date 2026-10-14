@@ -2,7 +2,10 @@
 
 namespace App\Livewire\Settings;
 
+use App\Contracts\TextGenerator;
 use App\Livewire\Concerns\InteractsWithUi;
+use App\Services\Ai\AiException;
+use App\Services\Ai\PostWriter;
 use App\Services\AuditLogger;
 use App\Services\SettingsService;
 use App\Support\Permissions;
@@ -29,6 +32,36 @@ class Index extends Component
 
     /** @var TemporaryUploadedFile|null */
     public $logo = null;
+
+    /** @var array{ok: bool, message: string, models: list<string>}|null */
+    public ?array $aiCheck = null;
+
+    /**
+     * Ask the local AI server which models are installed (fast, no generation).
+     */
+    public function checkAi(TextGenerator $generator): void
+    {
+        $this->authorize(Permissions::SETTINGS_MANAGE);
+        $model = (string) ($this->form['ai']['model'] ?? '');
+
+        try {
+            $models = $generator->models();
+        } catch (AiException $e) {
+            $this->aiCheck = ['ok' => false, 'message' => $e->getMessage(), 'models' => []];
+
+            return;
+        }
+
+        $installed = in_array($model, $models, true) || in_array($model.':latest', $models, true);
+
+        $this->aiCheck = [
+            'ok' => $installed,
+            'message' => $installed
+                ? "AI server is running and \"{$model}\" is installed."
+                : "AI server is running, but \"{$model}\" is not installed. Run: ollama pull {$model}",
+            'models' => $models,
+        ];
+    }
 
     public function mount(SettingsService $settings): void
     {
@@ -57,6 +90,9 @@ class Index extends Component
             'form.telegram.per_chat_per_minute' => ['required', 'integer', 'min:1', 'max:60'],
             'form.telegram.allow_http_media' => ['boolean'],
             'form.telegram.test_message' => ['required', 'string', 'max:1000'],
+            'form.ai.enabled' => ['boolean'],
+            'form.ai.model' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9._:\/-]+$/'],
+            'form.ai.default_language' => ['required', 'in:'.implode(',', array_keys(PostWriter::LANGUAGES))],
             'form.notifications.mail_enabled' => ['boolean'],
             'form.notifications.failure_threshold' => ['required', 'integer', 'min:2', 'max:50'],
             'form.storage.media_disk' => ['required', 'in:local'.(self::s3Available() ? ',s3' : '')],

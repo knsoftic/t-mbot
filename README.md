@@ -42,6 +42,7 @@ CONTENT → SEQUENCE → CAMPAIGN → BOT → DESTINATION → TRIGGER/SCHEDULE �
 | **Repeat** | Stop, repeat immediately, daily, weekly or indefinitely (optionally N times). |
 | **Monitoring** | Dashboard, schedules timeline, posting logs (with Telegram responses), failed jobs (retry/delete), audit log, system health, admin notifications (bell + optional e-mail). |
 | **Security** | Roles & permissions, account status, login throttling, password reset, CSRF/XSS protection, encrypted tokens, token redaction in logs, Sanctum API tokens, audit logging. |
+| **Offline AI drafts** (optional) | "✨ AI se likho" in the content form writes a post/caption draft with a **local model on your own server** ([Ollama](https://ollama.com), e.g. `qwen2.5:1.5b`). English / Urdu / Roman Urdu, tone, length, emojis, hashtags. No external AI service, no API key; drafts are never posted automatically. |
 
 ---
 
@@ -144,6 +145,7 @@ DEMO_BOT_TOKEN=123456:ABC... DEMO_CHAT_ID=@my_channel php artisan db:seed --clas
 | `TELEGRAM_API_URL` | Default `https://api.telegram.org`; point it at a self-hosted Bot API server if you use one. |
 | `TELEGRAM_TIMEOUT` | Default HTTP timeout (seconds); also editable in Settings. |
 | `TELEGRAM_STALE_PROCESSING_MINUTES` | After how long an in-flight item is considered interrupted (default 10). |
+| `AI_BASE_URL`, `AI_MODEL`, `AI_TIMEOUT` | Local Ollama server (default `http://127.0.0.1:11434`), default model (`qwen2.5:1.5b`, changeable in **Settings → AI**) and generation timeout in seconds (default 180). |
 
 No passwords, tokens or credentials are hard-coded anywhere in the repository.
 
@@ -290,7 +292,18 @@ sudo ufw enable
 ```
 MySQL (3306) and Redis (6379) stay bound to `127.0.0.1` and are not opened.
 
-### 12. Updating
+### 12. Offline AI (optional)
+Installs [Ollama](https://ollama.com), binds it to `127.0.0.1` only (port 11434 is never opened), runs one generation at a time, frees the RAM after 5 idle minutes and downloads a small model (~1 GB):
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+printf '[Service]\nEnvironment="OLLAMA_HOST=127.0.0.1:11434"\nEnvironment="OLLAMA_NUM_PARALLEL=1"\nEnvironment="OLLAMA_MAX_LOADED_MODELS=1"\nEnvironment="OLLAMA_KEEP_ALIVE=5m"\n' | sudo tee /etc/systemd/system/ollama.service.d/override.conf
+sudo systemctl daemon-reload && sudo systemctl restart ollama
+ollama pull qwen2.5:1.5b
+```
+Then **Settings → AI (offline)** → enable → *AI server check karein*. On 2 CPU cores a short draft takes roughly 10–60 s; drafts run on the `default` queue, one at a time, so posting is never blocked. Use a normal chat model — "thinking-only" models are detected and rejected.
+
+### 13. Updating
 ```bash
 bash deploy/deploy.sh
 ```

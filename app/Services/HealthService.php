@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Contracts\TextGenerator;
+use App\Services\Ai\AiException;
 use App\Services\Telegram\TelegramService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +27,7 @@ class HealthService
      */
     public function checks(): array
     {
-        return [
+        $checks = [
             $this->database(),
             $this->redis(),
             $this->queue(),
@@ -33,6 +35,31 @@ class HealthService
             $this->telegram(),
             $this->storage(),
         ];
+
+        // The local AI is optional: only checked once it has been turned on.
+        if ($this->settings->get('ai.enabled')) {
+            $checks[] = $this->ai();
+        }
+
+        return $checks;
+    }
+
+    /**
+     * @return array{key: string, label: string, status: string, message: string}
+     */
+    public function ai(): array
+    {
+        $model = (string) $this->settings->get('ai.model');
+
+        try {
+            $models = app(TextGenerator::class)->models();
+        } catch (AiException $e) {
+            return $this->result('ai', 'Local AI', 'failed', $e->getMessage());
+        }
+
+        return in_array($model, $models, true) || in_array($model.':latest', $models, true)
+            ? $this->result('ai', 'Local AI', 'healthy', "Ollama is running; model \"{$model}\" is installed.")
+            : $this->result('ai', 'Local AI', 'failed', "Ollama is running, but \"{$model}\" is not installed. Run: ollama pull {$model}");
     }
 
     /**

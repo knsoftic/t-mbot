@@ -178,6 +178,45 @@
                 <p><a href="{{ route('tags.index') }}" wire:navigate>Categories / Tags</a> page par tags ka naam aur rang badal sakte hain.</p>
             </x-docs.section>
 
+            {{-- AI drafts --}}
+            <x-docs.section id="ai" title="AI se post likhna (offline)" icon="sparkles">
+                <p>Content form mein <strong>✨ AI se likho</strong> button aap ke idea se post ya caption ka draft likhta hai. Model isi server par chalta hai (Ollama); koi data kisi bahar ki AI company ko nahi jata aur koi API key nahi chahiye. AI sirf <strong>draft</strong> likhta hai: aap parh kar theek karein, phir Save. Khud kuch post nahi hota.</p>
+                <h3>Istemal</h3>
+                <x-docs.steps>
+                    <li><a href="{{ route('contents.create') }}" wire:navigate>Content → New content</a> kholein aur type chunein.</li>
+                    <li>Text / Caption ke saath <strong>✨ AI se likho</strong> dabayein.</li>
+                    <li>Topic likhein (jitni tafseel, utna behtar: naam, offer, tareekh, link), zaban (English / اردو / Roman Urdu), andaaz aur lambai chunein, emojis / hashtags on-off karein.</li>
+                    <li><strong>Draft banao</strong>. 2-core server par 10–60 second lagte hain. Dialog band bhi kar dein to draft khud text box mein aa jata hai.</li>
+                    <li>Draft parhein, ghalat baat theek karein, phir <strong>Save content</strong>.</li>
+                </x-docs.steps>
+                <x-docs.callout type="warning">Chhota model (1–1.5B) English mein theek likhta hai, Urdu mein kamzor ho sakta hai, aur kabhi apni taraf se baat bana deta hai. Is liye har draft post se pehle zaroor parhein.</x-docs.callout>
+                <h3>Server par ek dafa setup (Super Admin)</h3>
+                <p>Server par (root) yeh command Ollama ka official installer chalati hai (~1–2 GB download), aur use sirf <code>127.0.0.1</code> par, ek waqt mein ek request, aur 5 minute khaali rehne par RAM khali karne ke liye set karti hai. Phir model (~1 GB) download karke ek test jawab leti hai:</p>
+                <x-docs.code>(
+set -e
+curl -fsSL https://ollama.com/install.sh | sh
+mkdir -p /etc/systemd/system/ollama.service.d
+cat > /etc/systemd/system/ollama.service.d/override.conf &lt;&lt;'EOF'
+[Service]
+Environment="OLLAMA_HOST=127.0.0.1:11434"
+Environment="OLLAMA_NUM_PARALLEL=1"
+Environment="OLLAMA_MAX_LOADED_MODELS=1"
+Environment="OLLAMA_KEEP_ALIVE=5m"
+EOF
+systemctl daemon-reload
+systemctl restart ollama
+sleep 3
+ollama pull qwen2.5:1.5b
+ollama run qwen2.5:1.5b "Write one short friendly Telegram post about Monday motivation."
+)</x-docs.code>
+                <x-docs.steps>
+                    <li>Command ke aakhir mein model ka chhota sa jawab aaye to AI server tayyar hai.</li>
+                    <li>Panel mein <a href="{{ route('settings.index', ['tab' => 'ai']) }}" wire:navigate>Settings → AI (offline)</a> → <strong>AI drafts on karein</strong> → Save → <strong>AI server check karein</strong> ("is installed" aana chahiye).</li>
+                    <li><a href="{{ route('system-health') }}" wire:navigate>System Health</a> mein <strong>Local AI: Healthy</strong> dikhega.</li>
+                </x-docs.steps>
+                <p>Doosra model aazmana ho (jaise thora bara 3B): server par <code>ollama pull &lt;naam&gt;</code>, phir Settings → AI mein model ka naam badal dein. 2-core / 8 GB RAM server par 1–1.5B model ki salah hai; 3B chalega magar dheere.</p>
+            </x-docs.section>
+
             {{-- 7. Campaign wizard --}}
             <x-docs.section id="campaign-wizard" title="7. Campaign banana (10 steps)" icon="bolt">
                 <p>Campaign batati hai: <strong>kaunsa bot</strong>, <strong>kis chat mein</strong>, <strong>kaunsa content kis tarteeb se</strong>, aur <strong>kab</strong>. <a href="{{ route('campaigns.create') }}" wire:navigate>Campaigns → New campaign</a> kholein. Upar wali patti se kisi bhi pichle step par wapas ja sakte hain.</p>

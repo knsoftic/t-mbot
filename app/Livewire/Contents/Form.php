@@ -5,13 +5,21 @@ namespace App\Livewire\Contents;
 use App\Enums\ContentSource;
 use App\Enums\ContentType;
 use App\Enums\ParseMode;
+use App\Jobs\GenerateAiDraftJob;
 use App\Livewire\Concerns\InteractsWithUi;
 use App\Models\Content;
 use App\Models\Tag;
+use App\Services\Ai\PostWriter;
+use App\Services\AuditLogger;
 use App\Services\ContentService;
 use App\Services\MediaUrlValidator;
+use App\Services\SettingsService;
 use App\Support\Permissions;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -63,9 +71,32 @@ class Form extends Component
     /** @var array{ok: bool, message: string}|null */
     public ?array $urlCheck = null;
 
+    // AI draft ("✨ AI se likho")
+    public bool $showAi = false;
+
+    public string $aiTopic = '';
+
+    public string $aiLanguage = 'english';
+
+    public string $aiTone = 'friendly';
+
+    public string $aiLength = 'medium';
+
+    public bool $aiEmojis = true;
+
+    public bool $aiHashtags = false;
+
+    #[Locked]
+    public ?string $aiRequestId = null;
+
+    public string $aiStatus = 'idle';
+
+    public string $aiError = '';
+
     public function mount(?Content $content = null): void
     {
         $this->authorize(Permissions::CONTENTS_MANAGE);
+        $this->aiLanguage = (string) app(SettingsService::class)->get('ai.default_language');
 
         if ($content?->exists) {
             $this->content = $content;
@@ -120,6 +151,110 @@ class Form extends Component
         if ($type && $type->isMedia()) {
             $this->validateOnly('upload', ['upload' => ['file', 'extensions:'.implode(',', $type->allowedExtensions()), 'max:'.$type->maxUploadKilobytes()]]);
         }
+    }
+
+    public function openAi(): void
+    {
+        $this->resetValidation(['aiTopic']);
+        $this->aiError = '';
+        $this->aiStatus = $this->aiStatus === 'pending' ? 'pending' : 'idle';
+        $this->showAi = true;
+    }
+
+    /**
+     * Queue an AI draft. The result is written into the text/caption field
+     * by pollAi(); nothing is saved or posted automatically.
+     */
+    public function generateAi(AuditLogger $audit): void
+    {
+        $this->authorize(Permissions::CONTENTS_MANAGE);
+
+        if ($this->aiStatus === 'pending') {
+            return;
+        }
+
+        if (! app(SettingsService::class)->get('ai.enabled')) {
+            $this->aiStatus = 'failed';
+            $this->aiError = 'AI is turned off. A Super Admin can enable it in Settings → AI.';
+
+            return;
+        }
+
+        $this->validate([
+            'aiTopic' => ['required', 'string', 'min:3', 'max:1000'],
+            'aiLanguage' => ['required', Rule::in(array_keys(PostWriter::LANGUAGES))],
+            'aiTone' => ['required', Rule::in(PostWriter::TONES)],
+            'aiLength' => ['required', Rule::in(array_keys(PostWriter::LENGTHS))],
+        ], [], ['aiTopic' => 'topic']);
+
+        // The server has 2 CPU cores: keep AI requests rare.
+        $key = 'ai-draft:'.auth()->id();
+
+        if (RateLimiter::tooManyAttempts($key, 6)) {
+            $this->aiStatus = 'failed';
+            $this->aiError = 'Too many AI requests. Wait '.RateLimiter::availableIn($key).' seconds.';
+
+            return;
+        }
+
+        RateLimiter::hit($key, 60);
+
+        $this->aiRequestId = (string) Str::uuid();
+        $cacheKey = GenerateAiDraftJob::cacheKey((int) auth()->id(), $this->aiRequestId);
+        Cache::put($cacheKey, ['status' => 'pending'], now()->addMinutes(30));
+        $this->aiStatus = 'pending';
+        $this->aiError = '';
+
+        GenerateAiDraftJob::dispatch($cacheKey, [
+            'topic' => $this->aiTopic,
+            'language' => $this->aiLanguage,
+            'tone' => $this->aiTone,
+            'length' => $this->aiLength,
+            'emojis' => $this->aiEmojis,
+            'hashtags' => $this->aiHashtags,
+            'for' => ContentType::tryFrom($this->type)?->isMedia() ? 'caption' : 'text',
+        ]);
+
+        $audit->log('ai.draft_requested', $this->content, 'AI draft requested', ['language' => $this->aiLanguage, 'length' => $this->aiLength]);
+
+        $this->pollAi();
+    }
+
+    /**
+     * Called every 2 seconds while a draft is being written.
+     */
+    public function pollAi(): void
+    {
+        if ($this->aiStatus !== 'pending' || ! $this->aiRequestId) {
+            return;
+        }
+
+        $result = Cache::get(GenerateAiDraftJob::cacheKey((int) auth()->id(), $this->aiRequestId));
+
+        if (! $result || ($result['status'] ?? '') === 'pending') {
+            return;
+        }
+
+        if ($result['status'] === 'failed') {
+            $this->aiStatus = 'failed';
+            $this->aiError = (string) ($result['error'] ?? 'The AI could not write a draft.');
+
+            return;
+        }
+
+        if (ContentType::tryFrom($this->type)?->isMedia()) {
+            $this->caption = (string) $result['text'];
+        } else {
+            $this->text = (string) $result['text'];
+        }
+
+        if ($this->title === '') {
+            $this->title = Str::limit(Str::squish($this->aiTopic), 80, '');
+        }
+
+        $this->aiStatus = 'done';
+        $this->showAi = false;
+        $this->toast('AI draft is ready. Read it and edit before saving.');
     }
 
     public function checkUrl(MediaUrlValidator $validator): void
@@ -243,6 +378,7 @@ class Form extends Component
             'knownTags' => Tag::query()->orderBy('name')->limit(200)->pluck('name'),
             'bodyLength' => mb_strlen($type === ContentType::Text ? $this->text : $this->caption),
             'bodyLimit' => $type === ContentType::Text ? 4096 : 1024,
+            'aiEnabled' => (bool) app(SettingsService::class)->get('ai.enabled'),
         ])->title($this->content ? 'Edit content' : 'New content');
     }
 }

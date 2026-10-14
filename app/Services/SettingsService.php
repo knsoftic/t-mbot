@@ -44,6 +44,10 @@ class SettingsService
             'notifications.failure_threshold' => 3,
 
             'storage.media_disk' => 'local',
+
+            'ai.enabled' => false,
+            'ai.model' => config('ai.model', 'qwen2.5:1.5b'),
+            'ai.default_language' => 'english',
         ];
     }
 

@@ -97,7 +97,18 @@
             <section class="card p-5">
                 <div class="flex items-center justify-between gap-3">
                     <h2 class="card-title">{{ $typeEnum->isMedia() ? 'Caption' : 'Message text' }} @if (! $typeEnum->isMedia())<span class="text-red-500">*</span>@endif</h2>
-                    <span @class(['text-xs tabular-nums', 'text-red-600' => $bodyLength > $bodyLimit, 'text-slate-400' => $bodyLength <= $bodyLimit])>{{ number_format($bodyLength) }} / {{ number_format($bodyLimit) }}</span>
+                    <div class="flex items-center gap-3">
+                        @if ($aiEnabled)
+                            <button type="button" wire:click="openAi" class="btn btn-secondary btn-sm">
+                                @if ($aiStatus === 'pending')
+                                    <x-spinner /> AI likh raha hai…
+                                @else
+                                    <x-icon name="sparkles" class="size-4 text-purple-500" /> AI se likho
+                                @endif
+                            </button>
+                        @endif
+                        <span @class(['text-xs tabular-nums', 'text-red-600' => $bodyLength > $bodyLimit, 'text-slate-400' => $bodyLength <= $bodyLimit])>{{ number_format($bodyLength) }} / {{ number_format($bodyLimit) }}</span>
+                    </div>
                 </div>
                 <div class="mt-3">
                     @if ($typeEnum->isMedia())
@@ -175,4 +186,71 @@
             </div>
         </aside>
     </form>
+
+    {{-- AI draft: keeps checking every 2 s while the server writes, even if the dialog is closed. --}}
+    @if ($aiStatus === 'pending')
+        <div wire:poll.2s="pollAi" class="hidden"></div>
+    @endif
+
+    @if ($aiEnabled)
+    <x-modal wire:model="showAi" title="✨ AI se likho" max-width="lg">
+        <div class="space-y-4">
+            <p class="text-sm text-slate-500">AI server par (offline) draft likhega aur woh {{ $typeEnum->isMedia() ? 'caption' : 'message text' }} mein aa jayega. Save karne se pehle zaroor parh kar theek karein; AI kabhi kabhi ghalat baat bhi likh deta hai.</p>
+
+            <x-field label="Kis baare mein post?" for="aiTopic" error="aiTopic" hint="Jitni tafseel denge, draft utna behtar hoga: product ka naam, offer, date, link waghera.">
+                <textarea id="aiTopic" wire:model="aiTopic" rows="3" class="input" maxlength="1000" placeholder="Misaal: Hamari nayi Urdu course 1 November se shuru, registration website par"></textarea>
+            </x-field>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <x-field label="Zaban" for="aiLanguage">
+                    <select id="aiLanguage" wire:model="aiLanguage" class="input">
+                        <option value="english">English</option>
+                        <option value="urdu">اردو (Urdu)</option>
+                        <option value="roman_urdu">Roman Urdu</option>
+                    </select>
+                </x-field>
+                <x-field label="Andaaz" for="aiTone">
+                    <select id="aiTone" wire:model="aiTone" class="input">
+                        <option value="friendly">Friendly</option>
+                        <option value="professional">Professional</option>
+                        <option value="exciting">Exciting</option>
+                        <option value="informative">Informative</option>
+                    </select>
+                </x-field>
+                <x-field label="Lambai" for="aiLength">
+                    <select id="aiLength" wire:model="aiLength" class="input">
+                        <option value="short">Chhoti</option>
+                        <option value="medium">Darmiyani</option>
+                        <option value="long">Lambi</option>
+                    </select>
+                </x-field>
+            </div>
+
+            <div class="flex flex-wrap gap-5 text-sm">
+                <label class="flex items-center gap-2"><input type="checkbox" wire:model="aiEmojis" class="checkbox"> Emojis</label>
+                <label class="flex items-center gap-2"><input type="checkbox" wire:model="aiHashtags" class="checkbox"> Hashtags</label>
+            </div>
+
+            @if ($aiStatus === 'pending')
+                <div class="flex items-center gap-3 rounded-lg bg-purple-50 p-3 text-sm text-purple-900 dark:bg-purple-500/10 dark:text-purple-200">
+                    <x-spinner class="size-5" />
+                    <span>AI likh raha hai… server par is mein 10–60 second lag sakte hain. Yeh dialog band bhi kar dein to draft khud text box mein aa jayega.</span>
+                </div>
+            @elseif ($aiStatus === 'failed' && $aiError)
+                <x-docs.callout type="danger">{{ $aiError }}</x-docs.callout>
+            @endif
+
+            @if (($typeEnum->isMedia() ? $caption : $text) !== '')
+                <p class="text-xs text-amber-600">Dhyaan dein: maujooda {{ $typeEnum->isMedia() ? 'caption' : 'text' }} AI draft se badal jayega.</p>
+            @endif
+        </div>
+
+        <x-slot:footer>
+            <button type="button" class="btn btn-secondary" x-on:click="show = false">Band karein</button>
+            <button type="button" wire:click="generateAi" class="btn btn-primary" @disabled($aiStatus === 'pending') wire:loading.attr="disabled" wire:target="generateAi">
+                <x-icon name="sparkles" class="size-4" /> Draft banao
+            </button>
+        </x-slot:footer>
+    </x-modal>
+    @endif
 </div>
