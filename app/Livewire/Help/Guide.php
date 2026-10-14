@@ -21,6 +21,7 @@ class Guide extends Component
         'ai' => 'AI se post likhna (offline)',
         'quick-send' => 'Quick Send',
         'welcome' => 'Welcome DMs',
+        'member-import' => 'Member import',
         'campaign-wizard' => 'Campaign banana',
         'triggers' => 'Trigger types',
         'campaign-run' => 'Campaign chalana',

@@ -14,6 +14,7 @@
             ['Channels', 'destinations.channels', 'megaphone', P::DESTINATIONS_VIEW, ['destinations.channels']],
             ['Groups', 'destinations.groups', 'user-group', P::DESTINATIONS_VIEW, ['destinations.groups']],
             ['Welcome DMs', 'welcome.index', 'chat', P::DESTINATIONS_VIEW, ['welcome.*']],
+            ['Member Import', 'member-imports.index', 'users', P::MEMBERS_IMPORT, ['member-imports.*']],
         ],
         'Content' => [
             ['Content Library', 'contents.index', 'photo', P::CONTENTS_VIEW, ['contents.*']],

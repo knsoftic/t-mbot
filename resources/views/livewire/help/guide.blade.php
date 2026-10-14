@@ -230,6 +230,29 @@ ollama run qwen2.5:1.5b "Write one short friendly Telegram post about Monday mot
             </x-docs.section>
 
             {{-- Welcome DMs --}}
+            <x-docs.section id="member-import" title="Member import (list se members lana)" icon="users">
+                <x-docs.callout type="warning" title="Telegram ka qanoon">Bot kisi ko group / channel mein <strong>add nahi kar sakta</strong>. Personal accounts se bulk add Telegram ke qawaneen ke khilaf hai aur accounts ban ho jate hain, is liye yeh panel aisa kabhi nahi karta. Har shakhs <strong>khud join request</strong> bhejta hai, aur sirf list walon ki request khud approve hoti hai.</x-docs.callout>
+                <x-docs.steps>
+                    <li>Bot ko group / channel ka admin banayein: “Invite users via link” aur (groups mein) members dekhne ka right.</li>
+                    <li>Sidebar → <a href="{{ route('member-imports.index') }}" wire:navigate>Telegram → Member Import</a> → group / channel chunein.</li>
+                    <li>CSV, TXT ya Excel (.xlsx) file upload karein: har line mein <span class="kbd-pill">@username</span>, <span class="kbd-pill">t.me/username</span> ya numeric user ID. “username” / “user_id” header bhi chalta hai. <a href="{{ route('member-imports.sample') }}">Sample file</a>.</li>
+                    <li>Options: <strong>Send a private invite</strong> (sirf un ko jinhon ne bot Start kiya) aur <strong>Approve join requests from people on this list</strong>. Phir <strong>Upload & start</strong>.</li>
+                    <li>Report page par progress live chalti hai. Har shakhs ka status aur wajah dikhti hai, status par click karke filter, aur <strong>Export CSV</strong>.</li>
+                    <li>“Waiting for request” walon ko join-request link (WhatsApp, e-mail, website par) bhejein. Woh request bhejte hi khud approve ho kar <strong>Added</strong> ho jate hain. Baad mein <strong>Check again</strong> se dobara check karein.</li>
+                </x-docs.steps>
+                <table>
+                    <thead><tr><th>Status</th><th>Matlab</th></tr></thead>
+                    <tbody>
+                        <tr><td>Added</td><td>Join request approve ho gayi ya woh join ho gaye.</td></tr>
+                        <tr><td>Invited</td><td>Bot Start kiya hua tha, private invite chala gaya.</td></tr>
+                        <tr><td>Waiting for request</td><td>Bot un tak nahi pahunch sakta; link se request aate hi approve.</td></tr>
+                        <tr><td>Already member</td><td>Pehle se group mein.</td></tr>
+                        <tr><td>Skipped</td><td>Ghalat entry, duplicate, phone number, ya group se banned.</td></tr>
+                        <tr><td>Failed</td><td>Telegram ki ghalti (wajah saath likhi hoti hai).</td></tr>
+                    </tbody>
+                </table>
+            </x-docs.section>
+
             <x-docs.section id="welcome" title="Welcome DMs (naye members ko private message)" icon="chat">
                 <x-docs.callout type="warning" title="Telegram ka qanoon">Koi bot kisi ko khud se DM nahi kar sakta. DM sirf un logon ko ja sakta hai jo <strong>join-request link</strong> se join karein (request aane ke 5 minute tak), ya jinhon ne bot ko <strong>Start</strong> kiya ho. Aam public link se aane walon ko koi bhi bot message nahi kar sakta.</x-docs.callout>
                 <x-docs.steps>

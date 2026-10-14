@@ -11,4 +11,5 @@ enum PostTrigger: string
     case Retry = 'retry';
     case QuickSend = 'quick_send';
     case Welcome = 'welcome';
+    case Invite = 'invite';
 }

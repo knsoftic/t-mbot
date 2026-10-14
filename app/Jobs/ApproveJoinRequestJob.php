@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Jobs\Middleware\TelegramRateLimit;
 use App\Models\TelegramBot;
+use App\Services\MemberAllowlist;
 use App\Services\PostingService;
 use App\Services\Telegram\TelegramApiException;
 use App\Services\Telegram\TelegramErrorType;
@@ -28,6 +29,8 @@ class ApproveJoinRequestJob implements ShouldQueue
         public int $botId,
         public string $chatId,
         public int $telegramUserId,
+        public ?int $destinationId = null,
+        public ?string $username = null,
     ) {
         $this->onQueue(config('telegram.queues.telegram'));
         $this->chatKey = $chatId;
@@ -46,7 +49,7 @@ class ApproveJoinRequestJob implements ShouldQueue
         return [new TelegramRateLimit];
     }
 
-    public function handle(TelegramService $telegram, PostingService $posting): void
+    public function handle(TelegramService $telegram, PostingService $posting, MemberAllowlist $allowlist): void
     {
         $bot = TelegramBot::query()->withoutGlobalScopes()->find($this->botId);
 
@@ -56,6 +59,10 @@ class ApproveJoinRequestJob implements ShouldQueue
 
         try {
             $telegram->forBot($bot)->approveChatJoinRequest($this->chatId, $this->telegramUserId);
+
+            if ($this->destinationId !== null) {
+                $allowlist->markJoined($this->destinationId, $this->telegramUserId, $this->username, 'Their join request was approved.');
+            }
         } catch (TelegramApiException $e) {
             if ($e->type === TelegramErrorType::FloodControl) {
                 $wait = max(1, (int) ($e->retryAfter ?? 30)) + 1;

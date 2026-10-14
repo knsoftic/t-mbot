@@ -66,6 +66,8 @@
                                             <a href="{{ route('quick-send', ['target' => $log->quick_send_target_id]) }}" wire:navigate class="hover:text-brand-600">Quick Send</a>
                                         @elseif ($log->trigger === \App\Enums\PostTrigger::Welcome)
                                             <a href="{{ route('welcome.index') }}" wire:navigate class="hover:text-brand-600">Welcome DM</a>
+                                        @elseif ($log->trigger === \App\Enums\PostTrigger::Invite)
+                                            <a href="{{ route('member-imports.index') }}" wire:navigate class="hover:text-brand-600">Member invite</a>
                                         @else — @endif
                                     </td>
                                     <td class="hidden text-xs md:table-cell">

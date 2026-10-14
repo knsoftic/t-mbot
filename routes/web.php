@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BillingFileController;
 use App\Http\Controllers\BrandingLogoController;
 use App\Http\Controllers\ContentMediaController;
+use App\Http\Controllers\MemberImportFileController;
 use App\Livewire\Admin;
 use App\Livewire\AuditLogs;
 use App\Livewire\Billing;
@@ -16,6 +17,7 @@ use App\Livewire\Dashboard;
 use App\Livewire\Destinations;
 use App\Livewire\FailedJobs;
 use App\Livewire\Help;
+use App\Livewire\MemberImports;
 use App\Livewire\Notifications;
 use App\Livewire\PostingLogs;
 use App\Livewire\Profile;
@@ -84,6 +86,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::livewire('/destinations', Destinations\Index::class)->middleware('can:'.P::DESTINATIONS_VIEW)->name('destinations.index');
     Route::livewire('/channels', Destinations\Index::class)->middleware('can:'.P::DESTINATIONS_VIEW)->name('destinations.channels');
     Route::livewire('/groups', Destinations\Index::class)->middleware('can:'.P::DESTINATIONS_VIEW)->name('destinations.groups');
+    Route::livewire('/member-imports', MemberImports\Index::class)->middleware('can:'.P::MEMBERS_IMPORT)->name('member-imports.index');
+    Route::get('/member-imports/sample.csv', [MemberImportFileController::class, 'sample'])->middleware('can:'.P::MEMBERS_IMPORT)->name('member-imports.sample');
+    Route::livewire('/member-imports/{import}', MemberImports\Show::class)->whereNumber('import')->middleware('can:'.P::MEMBERS_IMPORT)->name('member-imports.show');
+    Route::get('/member-imports/{import}/export', [MemberImportFileController::class, 'export'])->whereNumber('import')->middleware('can:'.P::MEMBERS_IMPORT)->name('member-imports.export');
     Route::livewire('/welcome-messages', Welcome\Index::class)->middleware('can:'.P::DESTINATIONS_VIEW)->name('welcome.index');
 
     // Content

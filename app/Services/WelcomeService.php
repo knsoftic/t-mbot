@@ -7,6 +7,7 @@ use App\Enums\PostingStatus;
 use App\Enums\PostTrigger;
 use App\Jobs\ApproveJoinRequestJob;
 use App\Models\BotSubscriber;
+use App\Models\JoinRequest;
 use App\Models\PostingLog;
 use App\Models\Scopes\AccountScope;
 use App\Models\TelegramBot;
@@ -49,6 +50,7 @@ class WelcomeService
         private readonly PlanLimiter $limiter,
         private readonly PostingService $posting,
         private readonly AuditLogger $audit,
+        private readonly MemberAllowlist $allowlist,
     ) {}
 
     // ------------------------------------------------------------------
@@ -212,6 +214,20 @@ class WelcomeService
             return 'unknown_chat';
         }
 
+        // Keep the request: a member import can approve it later.
+        JoinRequest::query()->withoutGlobalScope(AccountScope::class)->updateOrCreate(
+            ['destination_id' => $destination->id, 'telegram_user_id' => (int) $from['id']],
+            [
+                'user_id' => $destination->user_id,
+                'bot_id' => $bot->id,
+                'username' => isset($from['username']) ? strtolower((string) $from['username']) : null,
+                'first_name' => isset($from['first_name']) ? mb_substr((string) $from['first_name'], 0, 255) : null,
+                'status' => JoinRequest::PENDING,
+                'requested_at' => CarbonImmutable::now(),
+                'decided_at' => null,
+            ],
+        );
+
         $outcome = 'no_welcome';
 
         // The DM must go out before the request is handled: approving ends the permission.
@@ -219,9 +235,13 @@ class WelcomeService
             $outcome = $this->sendWelcome($bot, $destination, (int) $request['user_chat_id'], $from);
         }
 
-        if ($destination->auto_approve_requests) {
-            ApproveJoinRequestJob::dispatch($bot->id, (string) $request['chat']['id'], (int) $from['id']);
-            $outcome .= '+approve';
+        // Approve when the chat approves everyone, or when the person is on an imported list.
+        // Requests from anybody else stay pending for an administrator.
+        $listed = $this->allowlist->isListed($destination->id, (int) $from['id'], $from['username'] ?? null);
+
+        if ($destination->auto_approve_requests || $listed) {
+            ApproveJoinRequestJob::dispatch($bot->id, (string) $request['chat']['id'], (int) $from['id'], $destination->id, $from['username'] ?? null);
+            $outcome .= $listed ? '+approve_listed' : '+approve';
         }
 
         return $outcome;
@@ -238,6 +258,14 @@ class WelcomeService
 
         if (! $isMember || ! in_array($old, ['left', 'kicked'], true)) {
             return 'ignored';
+        }
+
+        $joined = (array) ($change['new_chat_member']['user'] ?? []);
+        $chat = $this->destinationFor($bot, (array) ($change['chat'] ?? []));
+
+        // People from an imported list now count as added.
+        if ($chat && isset($joined['id'])) {
+            $this->allowlist->markJoined($chat->id, (int) $joined['id'], $joined['username'] ?? null, 'Joined the chat.');
         }
 
         // People approved from a join request were welcomed when they asked to join.
