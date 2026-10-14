@@ -159,6 +159,15 @@ class BotService
             throw ValidationException::withMessages(['bot' => 'This bot is used by active campaigns: '.$inUse->implode(', ').'. Stop them first.']);
         }
 
+        // Stop Telegram from delivering updates to a bot that no longer exists here.
+        if ($bot->updates_connected_at) {
+            try {
+                $this->telegram->forBot($bot)->deleteWebhook();
+            } catch (TelegramApiException) {
+                // The token may already be revoked; nothing else to clean up.
+            }
+        }
+
         DB::transaction(function () use ($bot) {
             // Free the token so the same bot can be added again later.
             $bot->forceFill(['token_hash' => hash('sha256', 'deleted:'.$bot->id.':'.$bot->token_hash)])->saveQuietly();

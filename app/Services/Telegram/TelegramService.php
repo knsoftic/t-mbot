@@ -62,6 +62,48 @@ class TelegramService
     }
 
     /**
+     * Deliver this bot's updates to $url; Telegram sends $secret in the
+     * X-Telegram-Bot-Api-Secret-Token header of every request.
+     *
+     * @param  list<string>  $allowedUpdates
+     * @return array<string, mixed>
+     */
+    public function setWebhook(string $url, string $secret, array $allowedUpdates): array
+    {
+        return $this->call('setWebhook', [
+            'url' => $url,
+            'secret_token' => $secret,
+            'allowed_updates' => $allowedUpdates,
+            'max_connections' => 20,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function deleteWebhook(): array
+    {
+        return $this->call('deleteWebhook');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function approveChatJoinRequest(string|int $chatId, int $userId): array
+    {
+        return $this->call('approveChatJoinRequest', ['chat_id' => $chatId, 'user_id' => $userId]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed> ChatInviteLink object.
+     */
+    public function createChatInviteLink(string|int $chatId, array $options = []): array
+    {
+        return $this->call('createChatInviteLink', ['chat_id' => $chatId] + $options);
+    }
+
+    /**
      * @param  array<string, mixed>  $options
      * @return array<string, mixed> Message object.
      */

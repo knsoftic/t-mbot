@@ -13,6 +13,7 @@
             ['Bots', 'bots.index', 'bot', P::BOTS_VIEW, ['bots.*']],
             ['Channels', 'destinations.channels', 'megaphone', P::DESTINATIONS_VIEW, ['destinations.channels']],
             ['Groups', 'destinations.groups', 'user-group', P::DESTINATIONS_VIEW, ['destinations.groups']],
+            ['Welcome DMs', 'welcome.index', 'chat', P::DESTINATIONS_VIEW, ['welcome.*']],
         ],
         'Content' => [
             ['Content Library', 'contents.index', 'photo', P::CONTENTS_VIEW, ['contents.*']],

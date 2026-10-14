@@ -64,6 +64,8 @@
                                             <a href="{{ route('campaigns.show', $log->campaign_id) }}" wire:navigate class="hover:text-brand-600">{{ $log->campaign->name }}</a>
                                         @elseif ($log->trigger === \App\Enums\PostTrigger::QuickSend)
                                             <a href="{{ route('quick-send', ['target' => $log->quick_send_target_id]) }}" wire:navigate class="hover:text-brand-600">Quick Send</a>
+                                        @elseif ($log->trigger === \App\Enums\PostTrigger::Welcome)
+                                            <a href="{{ route('welcome.index') }}" wire:navigate class="hover:text-brand-600">Welcome DM</a>
                                         @else — @endif
                                     </td>
                                     <td class="hidden text-xs md:table-cell">

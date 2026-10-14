@@ -10,4 +10,5 @@ enum PostTrigger: string
     case Manual = 'manual';
     case Retry = 'retry';
     case QuickSend = 'quick_send';
+    case Welcome = 'welcome';
 }

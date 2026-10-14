@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ConnectionStatus;
 use App\Enums\DestinationStatus;
 use App\Enums\DestinationType;
+use App\Enums\ParseMode;
 use App\Models\Concerns\BelongsToAccount;
 use Database\Factories\TelegramDestinationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -15,7 +16,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['user_id', 'bot_id', 'name', 'chat_id', 'username', 'type', 'status', 'description', 'is_test_chat', 'created_by'])]
+#[Fillable([
+    'user_id', 'bot_id', 'name', 'chat_id', 'username', 'type', 'status', 'description', 'is_test_chat', 'created_by',
+    'welcome_enabled', 'welcome_message', 'welcome_parse_mode', 'welcome_button_text', 'welcome_button_url',
+    'welcome_direct_joins', 'auto_approve_requests',
+])]
 class TelegramDestination extends Model
 {
     /** @use HasFactory<TelegramDestinationFactory> */
@@ -30,6 +35,10 @@ class TelegramDestination extends Model
             'bot_is_admin' => 'boolean',
             'bot_can_post' => 'boolean',
             'is_test_chat' => 'boolean',
+            'welcome_enabled' => 'boolean',
+            'welcome_parse_mode' => ParseMode::class,
+            'welcome_direct_joins' => 'boolean',
+            'auto_approve_requests' => 'boolean',
             'last_checked_at' => 'datetime',
         ];
     }

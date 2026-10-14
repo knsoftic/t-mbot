@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable(['user_id', 'name', 'username', 'token', 'status', 'description', 'created_by'])]
-#[Hidden(['token', 'token_hash'])]
+#[Hidden(['token', 'token_hash', 'webhook_secret'])]
 class TelegramBot extends Model
 {
     /** @use HasFactory<TelegramBotFactory> */
@@ -31,6 +31,7 @@ class TelegramBot extends Model
             'connection_status' => ConnectionStatus::class,
             'last_checked_at' => 'datetime',
             'last_activity_at' => 'datetime',
+            'updates_connected_at' => 'immutable_datetime',
         ];
     }
 
@@ -39,6 +40,11 @@ class TelegramBot extends Model
         static::saving(function (TelegramBot $bot) {
             if ($bot->isDirty('token')) {
                 $bot->token_hash = self::hashToken($bot->token);
+
+                // A webhook belongs to the old token: it has to be connected again.
+                if ($bot->exists) {
+                    $bot->updates_connected_at = null;
+                }
             }
         });
     }

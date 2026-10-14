@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\DestinationController;
 use App\Http\Controllers\Api\PostingLogController;
+use App\Http\Controllers\TelegramWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,6 +23,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::post('/auth/token', [AuthTokenController::class, 'store'])->middleware('throttle:api-auth')->name('api.auth.token');
+
+// Bot updates from Telegram (verified with the bot's secret token header).
+Route::post('/telegram/webhook/{bot}', TelegramWebhookController::class)->whereNumber('bot')->name('telegram.webhook');
 
 Route::middleware(['auth:sanctum', 'active', 'plan.api', 'throttle:api'])->name('api.')->group(function () {
     Route::get('/me', [AuthTokenController::class, 'me'])->name('me');

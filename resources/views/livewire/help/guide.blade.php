@@ -229,6 +229,20 @@ ollama run qwen2.5:1.5b "Write one short friendly Telegram post about Monday mot
                 <x-docs.callout type="info">Quick Send bhi queue ke zariye jata hai (aam taur par 1–2 second), Telegram ki flood limit ka khayal rakhta hai aur plan ki daily / weekly / monthly posting limit mein ginta hai. Network ghalti par khud dobara nahi bhejta, taake message do baar na jaye.</x-docs.callout>
             </x-docs.section>
 
+            {{-- Welcome DMs --}}
+            <x-docs.section id="welcome" title="Welcome DMs (naye members ko private message)" icon="chat">
+                <x-docs.callout type="warning" title="Telegram ka qanoon">Koi bot kisi ko khud se DM nahi kar sakta. DM sirf un logon ko ja sakta hai jo <strong>join-request link</strong> se join karein (request aane ke 5 minute tak), ya jinhon ne bot ko <strong>Start</strong> kiya ho. Aam public link se aane walon ko koi bhi bot message nahi kar sakta.</x-docs.callout>
+                <x-docs.steps>
+                    <li>Bot ko channel / group ka admin banayein aur <strong>Invite users via link</strong> ka right on karein (auto-approve ke liye).</li>
+                    <li>Sidebar → <a href="{{ route('welcome.index') }}" wire:navigate>Telegram → Welcome DMs</a> → channel ke saath <strong>Edit</strong>.</li>
+                    <li><strong>Send a welcome DM to new members</strong> on karein, message likhein. <span class="kbd-pill">{first_name}</span>, <span class="kbd-pill">{username}</span>, <span class="kbd-pill">{chat_title}</span> waghera member ke naam se badal jate hain. Chahein to ek link button (jaise “Visit our website”) jorein. Daayein taraf preview dikhta hai.</li>
+                    <li><strong>Approve join requests automatically</strong> on karein to welcome ke baad bot khud member ko andar le leta hai. Save par bot khud “Connected” ho jata hai (website https:// par honi chahiye).</li>
+                    <li><strong>Create link</strong> dabayein aur yeh join-request link apne posts, ads aur website par share karein (purane public link ki jagah).</li>
+                </x-docs.steps>
+                <p>Har welcome DM <a href="{{ route('logs.index') }}" wire:navigate>Posting Logs</a> mein “Welcome DM” ke naam se aata hai aur plan ki posting limit mein ginta hai. Limit poori ho to DM chhor diya jata hai magar auto-approve phir bhi hota hai. Jis user ne bot block kiya ho use dobara koshish nahi ki jati.</p>
+                <x-docs.callout type="info">Bot ki updates is panel par aati hain (webhook). Agar yahi bot kisi aur program mein bhi chal raha ho (getUpdates / webhook) to woh program updates lena band kar dega, is liye welcome ke liye alag bot behtar hai.</x-docs.callout>
+            </x-docs.section>
+
             {{-- 7. Campaign wizard --}}
             <x-docs.section id="campaign-wizard" title="7. Campaign banana (10 steps)" icon="bolt">
                 <p>Campaign batati hai: <strong>kaunsa bot</strong>, <strong>kis chat mein</strong>, <strong>kaunsa content kis tarteeb se</strong>, aur <strong>kab</strong>. <a href="{{ route('campaigns.create') }}" wire:navigate>Campaigns → New campaign</a> kholein. Upar wali patti se kisi bhi pichle step par wapas ja sakte hain.</p>

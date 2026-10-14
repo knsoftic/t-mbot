@@ -26,6 +26,7 @@ use App\Livewire\Settings;
 use App\Livewire\SystemHealth;
 use App\Livewire\Tags;
 use App\Livewire\Users;
+use App\Livewire\Welcome;
 use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Services\SettingsService;
@@ -83,6 +84,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::livewire('/destinations', Destinations\Index::class)->middleware('can:'.P::DESTINATIONS_VIEW)->name('destinations.index');
     Route::livewire('/channels', Destinations\Index::class)->middleware('can:'.P::DESTINATIONS_VIEW)->name('destinations.channels');
     Route::livewire('/groups', Destinations\Index::class)->middleware('can:'.P::DESTINATIONS_VIEW)->name('destinations.groups');
+    Route::livewire('/welcome-messages', Welcome\Index::class)->middleware('can:'.P::DESTINATIONS_VIEW)->name('welcome.index');
 
     // Content
     Route::livewire('/contents', Contents\Index::class)->middleware('can:'.P::CONTENTS_VIEW)->name('contents.index');

@@ -20,6 +20,7 @@ class Guide extends Component
         'content' => 'Content Library',
         'ai' => 'AI se post likhna (offline)',
         'quick-send' => 'Quick Send',
+        'welcome' => 'Welcome DMs',
         'campaign-wizard' => 'Campaign banana',
         'triggers' => 'Trigger types',
         'campaign-run' => 'Campaign chalana',
