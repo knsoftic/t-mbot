@@ -88,9 +88,9 @@
                     </x-field>
                     <x-field label="Default zaban" for="form.ai.default_language">
                         <select id="form.ai.default_language" wire:model="form.ai.default_language" class="input">
-                            <option value="english">English</option>
-                            <option value="urdu">اردو (Urdu)</option>
-                            <option value="roman_urdu">Roman Urdu</option>
+                            @foreach (\App\Services\Ai\PostWriter::LANGUAGE_LABELS as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
                         </select>
                     </x-field>
                 </div>

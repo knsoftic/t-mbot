@@ -85,7 +85,7 @@ class OllamaTextGenerator implements TextGenerator
      */
     public static function dropUnfinishedSentence(string $text): string
     {
-        if (preg_match('/^(.*(?:[.!?۔…\n]|\p{So}\x{FE0F}?))/su', $text, $m) && mb_strlen(trim($m[1])) >= mb_strlen($text) * 0.4) {
+        if (preg_match('/^(.*(?:[.!?۔।॥…\n]|\p{So}\x{FE0F}?))/su', $text, $m) && mb_strlen(trim($m[1])) >= mb_strlen($text) * 0.4) {
             return trim($m[1]);
         }
 

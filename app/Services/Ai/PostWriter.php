@@ -14,10 +14,20 @@ use Illuminate\Support\Str;
  */
 class PostWriter
 {
+    /** What the model is told, per language key. */
     public const LANGUAGES = [
         'english' => 'English',
         'urdu' => 'Urdu (Urdu script)',
         'roman_urdu' => 'Roman Urdu (Urdu written in Latin letters, e.g. "Aaj ka din behtareen hai")',
+        'hindi' => 'Hindi (Devanagari script, simple everyday Hindi)',
+    ];
+
+    /** What people see in the language pickers. */
+    public const LANGUAGE_LABELS = [
+        'english' => 'English',
+        'urdu' => 'اردو (Urdu)',
+        'roman_urdu' => 'Roman Urdu',
+        'hindi' => 'हिन्दी (Hindi)',
     ];
 
     public const TONES = ['friendly', 'professional', 'exciting', 'informative'];
@@ -121,8 +131,9 @@ TXT;
         $text = preg_replace(['/\*\*/u', '/^#{1,6}\s+/mu'], '', $text);
 
         if (! $hashtags) {
-            $text = preg_replace('/^[ \t]*(#[\p{L}\p{N}_]+[ \t]*)+$/mu', '', $text);
-            $text = preg_replace('/([ \t]+#[\p{L}\p{N}_]+)+[ \t]*$/u', '', trim($text));
+            // \p{M}: Hindi and Urdu hashtags contain vowel signs (#स्वास्थ्य).
+            $text = preg_replace('/^[ \t]*(#[\p{L}\p{M}\p{N}_]+[ \t]*)+$/mu', '', $text);
+            $text = preg_replace('/([ \t]+#[\p{L}\p{M}\p{N}_]+)+[ \t]*$/u', '', trim($text));
         }
 
         $text = preg_replace("/\n{3,}/", "\n\n", $text);

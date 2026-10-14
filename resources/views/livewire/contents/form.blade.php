@@ -204,9 +204,9 @@
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <x-field label="Zaban" for="aiLanguage">
                     <select id="aiLanguage" wire:model="aiLanguage" class="input">
-                        <option value="english">English</option>
-                        <option value="urdu">اردو (Urdu)</option>
-                        <option value="roman_urdu">Roman Urdu</option>
+                        @foreach (\App\Services\Ai\PostWriter::LANGUAGE_LABELS as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
                     </select>
                 </x-field>
                 <x-field label="Andaaz" for="aiTone">

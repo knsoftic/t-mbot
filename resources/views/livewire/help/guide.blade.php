@@ -185,7 +185,7 @@
                 <x-docs.steps>
                     <li><a href="{{ route('contents.create') }}" wire:navigate>Content → New content</a> kholein aur type chunein.</li>
                     <li>Text / Caption ke saath <strong>✨ AI se likho</strong> dabayein.</li>
-                    <li>Topic likhein (jitni tafseel, utna behtar: naam, offer, tareekh, link), zaban (English / اردو / Roman Urdu), andaaz aur lambai chunein, emojis / hashtags on-off karein.</li>
+                    <li>Topic likhein (jitni tafseel, utna behtar: naam, offer, tareekh, link), zaban (English / اردو / Roman Urdu / हिन्दी), andaaz aur lambai chunein, emojis / hashtags on-off karein.</li>
                     <li><strong>Draft banao</strong>. 2-core server par 10–60 second lagte hain. Dialog band bhi kar dein to draft khud text box mein aa jata hai.</li>
                     <li>Draft parhein, ghalat baat theek karein, phir <strong>Save content</strong>.</li>
                 </x-docs.steps>
@@ -214,7 +214,7 @@ ollama run qwen2.5:1.5b "Write one short friendly Telegram post about Monday mot
                     <li>Panel mein <a href="{{ route('settings.index', ['tab' => 'ai']) }}" wire:navigate>Settings → AI (offline)</a> → <strong>AI drafts on karein</strong> → Save → <strong>AI server check karein</strong> ("is installed" aana chahiye).</li>
                     <li><a href="{{ route('system-health') }}" wire:navigate>System Health</a> mein <strong>Local AI: Healthy</strong> dikhega.</li>
                 </x-docs.steps>
-                <p>Doosra model aazmana ho: server par <code>ollama pull &lt;naam&gt;</code>, phir Settings → AI mein model ka naam badal dein. <code>qwen2.5:1.5b</code> (~1 GB RAM) English mein achha aur tez hai; Urdu / Roman Urdu behtar chahiye to <code>qwen2.5:3b</code> (~2 GB RAM, takreeban do guna dheere) aazmayein. 8 GB RAM wale server par is se bara model na lagayein. "Thinking" models (jaise qwen3 ke reasoning versions) post ki jagah apni soch likhte hain; panel unhein pakar kar error dikhata hai.</p>
+                <p>Doosra model aazmana ho: server par <code>ollama pull &lt;naam&gt;</code>, phir Settings → AI mein model ka naam badal dein. <code>qwen2.5:1.5b</code> (~1 GB RAM) English mein achha aur tez hai; Urdu / Roman Urdu / Hindi behtar chahiye to <code>qwen2.5:3b</code> (~2 GB RAM, takreeban do guna dheere) aazmayein. 8 GB RAM wale server par is se bara model na lagayein. "Thinking" models (jaise qwen3 ke reasoning versions) post ki jagah apni soch likhte hain; panel unhein pakar kar error dikhata hai.</p>
             </x-docs.section>
 
             {{-- 7. Campaign wizard --}}

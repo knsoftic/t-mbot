@@ -158,6 +158,24 @@ class AiDraftTest extends TestCase
     }
 
     #[Test]
+    public function hindi_drafts_are_supported_end_to_end(): void
+    {
+        $this->enableAi();
+        $this->fakeAnswer("आज का दिन शानदार है! थोड़ी देर टहलें और पानी ज़्यादा पिएं। 💧\n\n#स्वास्थ्य #पानी");
+        $this->actingAs(User::factory()->admin()->create());
+
+        Livewire::test(Form::class)
+            ->set('aiTopic', 'Weekend walk and water')
+            ->set('aiLanguage', 'hindi')
+            ->call('generateAi')
+            ->assertHasNoErrors()
+            ->assertSet('text', 'आज का दिन शानदार है! थोड़ी देर टहलें और पानी ज़्यादा पिएं। 💧');
+
+        Http::assertSent(fn (Request $request) => str_contains($request['messages'][1]['content'], 'Hindi (Devanagari'));
+        $this->assertSame('थोड़ी देर टहलें।', OllamaTextGenerator::dropUnfinishedSentence('थोड़ी देर टहलें। पानी ज़्या'));
+    }
+
+    #[Test]
     public function written_out_reasoning_is_rejected_instead_of_becoming_a_draft(): void
     {
         $this->expectException(AiException::class);
@@ -348,13 +366,19 @@ class AiDraftTest extends TestCase
             ->assertHasErrors(['form.ai.model'])
             ->set('form.ai.model', 'qwen2.5:1.5b')
             ->set('form.ai.enabled', true)
-            ->set('form.ai.default_language', 'roman_urdu')
+            ->set('form.ai.default_language', 'hindi')
             ->call('save')
-            ->assertHasNoErrors();
+            ->assertHasNoErrors()
+            ->set('form.ai.default_language', 'klingon')
+            ->call('save')
+            ->assertHasErrors(['form.ai.default_language']);
 
         $settings = app(SettingsService::class);
         $this->assertTrue($settings->get('ai.enabled'));
-        $this->assertSame('roman_urdu', $settings->get('ai.default_language'));
+        $this->assertSame('hindi', $settings->get('ai.default_language'));
+
+        // The content form starts with the default language.
+        Livewire::test(Form::class)->assertSet('aiLanguage', 'hindi')->assertSee('हिन्दी (Hindi)');
     }
 
     #[Test]

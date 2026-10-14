@@ -42,7 +42,7 @@ CONTENT → SEQUENCE → CAMPAIGN → BOT → DESTINATION → TRIGGER/SCHEDULE �
 | **Repeat** | Stop, repeat immediately, daily, weekly or indefinitely (optionally N times). |
 | **Monitoring** | Dashboard, schedules timeline, posting logs (with Telegram responses), failed jobs (retry/delete), audit log, system health, admin notifications (bell + optional e-mail). |
 | **Security** | Roles & permissions, account status, login throttling, password reset, CSRF/XSS protection, encrypted tokens, token redaction in logs, Sanctum API tokens, audit logging. |
-| **Offline AI drafts** (optional) | "✨ AI se likho" in the content form writes a post/caption draft with a **local model on your own server** ([Ollama](https://ollama.com), e.g. `qwen2.5:1.5b`). English / Urdu / Roman Urdu, tone, length, emojis, hashtags. No external AI service, no API key; drafts are never posted automatically. |
+| **Offline AI drafts** (optional) | "✨ AI se likho" in the content form writes a post/caption draft with a **local model on your own server** ([Ollama](https://ollama.com), e.g. `qwen2.5:1.5b`). English / Urdu / Roman Urdu / Hindi, tone, length, emojis, hashtags. No external AI service, no API key; drafts are never posted automatically. |
 
 ---
 
