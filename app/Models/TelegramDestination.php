@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ConnectionStatus;
 use App\Enums\DestinationStatus;
 use App\Enums\DestinationType;
+use App\Models\Concerns\BelongsToAccount;
 use Database\Factories\TelegramDestinationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,11 +15,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['bot_id', 'name', 'chat_id', 'username', 'type', 'status', 'description', 'is_test_chat', 'created_by'])]
+#[Fillable(['user_id', 'bot_id', 'name', 'chat_id', 'username', 'type', 'status', 'description', 'is_test_chat', 'created_by'])]
 class TelegramDestination extends Model
 {
     /** @use HasFactory<TelegramDestinationFactory> */
-    use HasFactory, SoftDeletes;
+    use BelongsToAccount, HasFactory, SoftDeletes;
 
     protected function casts(): array
     {

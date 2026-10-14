@@ -48,6 +48,19 @@ class SettingsService
             'ai.enabled' => false,
             'ai.model' => config('ai.model', 'qwen2.5:1.5b'),
             'ai.default_language' => 'english',
+
+            'registration.enabled' => true,
+            // required | optional | hidden
+            'registration.phone' => 'required',
+
+            // Contact details asked for on the plan purchase form: required | optional | hidden
+            'billing.contact_name' => 'required',
+            'billing.contact_email' => 'required',
+            'billing.contact_phone' => 'optional',
+            'billing.contact_whatsapp' => 'required',
+            'billing.instructions' => 'Send the exact amount to the address shown, then enter the transaction ID / reference below. We verify every payment by hand and activate your plan, usually within a few hours.',
+            'billing.support_whatsapp' => null,
+            'billing.support_email' => null,
         ];
     }
 

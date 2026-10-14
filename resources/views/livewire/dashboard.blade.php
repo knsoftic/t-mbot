@@ -7,6 +7,10 @@
         </x-slot:actions>
     </x-page-header>
 
+    @if ($usage)
+        <x-plan-usage :usage="$usage" compact class="mb-4" />
+    @endif
+
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-stat label="Posts sent today" :value="number_format($stats['sent_today'])" icon="check-circle" color="green" :href="route('logs.index', ['status' => 'sent'])" />
         <x-stat label="Failed posts today" :value="number_format($stats['failed_today'])" icon="x-circle" color="red" :href="route('logs.index', ['status' => 'failed'])" />

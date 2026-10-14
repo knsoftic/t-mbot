@@ -1,6 +1,6 @@
 <x-guest-layout title="Sign in">
     <h1 class="text-xl font-semibold text-slate-900 dark:text-white">Sign in</h1>
-    <p class="mt-1 text-sm text-slate-500">Administrator access only.</p>
+    <p class="mt-1 text-sm text-slate-500">Welcome back. Sign in to manage your bots and campaigns.</p>
 
     @if (session('status'))
         <div class="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">{{ session('status') }}</div>
@@ -26,4 +26,11 @@
         </label>
         <button type="submit" class="btn btn-primary w-full">Sign in</button>
     </form>
+
+    @if (app(\App\Services\SettingsService::class)->get('registration.enabled'))
+        <p class="mt-6 text-center text-sm text-slate-500">
+            New here? <a href="{{ route('register') }}" class="font-medium text-brand-600 hover:text-brand-500">Create a free account</a>
+            · <a href="{{ route('pricing') }}" class="font-medium text-brand-600 hover:text-brand-500">See plans</a>
+        </p>
+    @endif
 </x-guest-layout>

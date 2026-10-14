@@ -12,7 +12,10 @@ use App\Models\Campaign;
 use App\Models\CampaignItem;
 use App\Models\Content;
 use App\Models\Schedule;
+use App\Models\Scopes\AccountScope;
+use App\Models\TelegramBot;
 use App\Models\User;
+use App\Support\Accounts;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -27,6 +30,7 @@ class CampaignBuilder
     public function __construct(
         private readonly ScheduleCalculator $calculator,
         private readonly AuditLogger $audit,
+        private readonly PlanLimiter $limiter,
     ) {}
 
     /**
@@ -37,10 +41,10 @@ class CampaignBuilder
         return [
             'name' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'bot_id' => ['required', 'integer', Rule::exists('telegram_bots', 'id')->whereNull('deleted_at')],
-            'destination_id' => ['required', 'integer', Rule::exists('telegram_destinations', 'id')->whereNull('deleted_at')],
+            'bot_id' => ['required', 'integer', Accounts::exists('telegram_bots')],
+            'destination_id' => ['required', 'integer', Accounts::exists('telegram_destinations')],
             'test_mode' => ['boolean'],
-            'test_destination_id' => ['nullable', 'required_if:test_mode,true', 'integer', Rule::exists('telegram_destinations', 'id')->whereNull('deleted_at')],
+            'test_destination_id' => ['nullable', 'required_if:test_mode,true', 'integer', Accounts::exists('telegram_destinations')],
             'posting_order' => ['required', Rule::enum(PostingOrder::class)],
             'trigger_type' => ['required', Rule::enum(TriggerType::class)],
             'timezone' => ['required', 'timezone:all'],
@@ -54,7 +58,7 @@ class CampaignBuilder
             'retry_delay_seconds' => ['required', 'integer', 'min:5', 'max:86400'],
             'items' => ['array', 'max:5000'],
             'items.*.id' => ['nullable', 'integer'],
-            'items.*.content_id' => ['required', 'integer', Rule::exists('contents', 'id')->whereNull('deleted_at')],
+            'items.*.content_id' => ['required', 'integer', Accounts::exists('contents')],
             'items.*.scheduled_at' => ['nullable', 'date'],
             'slots' => ['array', 'max:48'],
             'slots.*.time' => ['required', 'date_format:H:i'],
@@ -76,11 +80,22 @@ class CampaignBuilder
 
         $isNew = $campaign === null;
 
-        $campaign = DB::transaction(function () use ($data, $campaign, $user) {
+        // A campaign belongs to the account that owns its bot.
+        $ownerId = $this->botOwner((int) $data['bot_id']);
+
+        if ($isNew || (string) $ownerId !== (string) $campaign->user_id) {
+            $this->limiter->assertCanAdd($ownerId, 'max_campaigns', 'name');
+        }
+
+        $this->assertIntervalAllowed($ownerId, $data);
+        $this->assertContentsBelongTo($ownerId, array_column($data['items'] ?? [], 'content_id'));
+
+        $campaign = DB::transaction(function () use ($data, $campaign, $user, $ownerId) {
             $campaign = $campaign
                 ? Campaign::query()->whereKey($campaign->id)->lockForUpdate()->firstOrFail()
                 : new Campaign(['status' => CampaignStatus::Draft, 'created_by' => $user?->id]);
 
+            $campaign->user_id = $ownerId;
             $tz = $data['timezone'];
             $trigger = TriggerType::from($data['trigger_type']);
             $repeat = RepeatMode::from($data['repeat_mode']);
@@ -161,6 +176,7 @@ class CampaignBuilder
      */
     public function addContents(Campaign $campaign, array $contentIds, ?User $user = null): int
     {
+        $this->assertContentsBelongTo($campaign->user_id, $contentIds);
         $ids = Content::query()->whereIn('id', $contentIds)->pluck('id')->all();
         $order = array_values(array_filter($contentIds, fn ($id) => in_array((int) $id, $ids, true)));
 
@@ -328,6 +344,54 @@ class CampaignBuilder
         $after = $campaign->schedules()->get()->map(fn (Schedule $s) => $s->time_of_day.'|'.json_encode($s->days).'|'.$s->timezone)->sort()->values()->all();
 
         return $before !== $after;
+    }
+
+    private function botOwner(int $botId): ?int
+    {
+        $owner = TelegramBot::withTrashed()->withoutGlobalScope(AccountScope::class)->whereKey($botId)->value('user_id');
+
+        return $owner === null ? null : (int) $owner;
+    }
+
+    /**
+     * A customer's campaign may only post that customer's own content.
+     *
+     * @param  array<int|string>  $contentIds
+     */
+    private function assertContentsBelongTo(?int $ownerId, array $contentIds): void
+    {
+        if ($contentIds === [] || ! Accounts::isCustomer($ownerId)) {
+            return;
+        }
+
+        $foreign = Content::withTrashed()->withoutGlobalScope(AccountScope::class)
+            ->whereIn('id', array_map('intval', $contentIds))
+            ->where(fn ($q) => $q->whereNull('user_id')->orWhere('user_id', '!=', $ownerId))
+            ->exists();
+
+        if ($foreign) {
+            throw ValidationException::withMessages(['items' => 'The sequence can only use content from the same account as the bot.']);
+        }
+    }
+
+    /**
+     * Plans set the shortest posting interval.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function assertIntervalAllowed(?int $ownerId, array $data): void
+    {
+        if (($data['trigger_type'] ?? null) !== TriggerType::Interval->value) {
+            return;
+        }
+
+        $min = $this->limiter->minIntervalSeconds($ownerId);
+
+        if ((int) ($data['interval_seconds'] ?? 0) < $min) {
+            throw ValidationException::withMessages([
+                'interval_seconds' => 'Your plan allows posting at most every '.intdiv($min, 60).' minute(s). Choose a longer interval or upgrade your plan.',
+            ]);
+        }
     }
 
     private function assertDestinationsBelongToBot(Campaign $campaign): void

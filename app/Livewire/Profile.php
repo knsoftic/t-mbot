@@ -4,6 +4,8 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\InteractsWithUi;
 use App\Services\AuditLogger;
+use App\Services\BillingService;
+use App\Services\PlanLimiter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -23,6 +25,10 @@ class Profile extends Component
 
     public string $email = '';
 
+    public string $phone = '';
+
+    public string $whatsapp = '';
+
     public string $timezone = '';
 
     public string $current_password = '';
@@ -41,6 +47,8 @@ class Profile extends Component
         $user = auth()->user();
         $this->name = $user->name;
         $this->email = $user->email;
+        $this->phone = (string) $user->phone;
+        $this->whatsapp = (string) $user->whatsapp;
         $this->timezone = (string) $user->timezone;
     }
 
@@ -51,10 +59,18 @@ class Profile extends Component
         $this->validate([
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'phone' => ['nullable', 'string', 'max:30', 'regex:'.BillingService::PHONE_PATTERN],
+            'whatsapp' => ['nullable', 'string', 'max:30', 'regex:'.BillingService::PHONE_PATTERN],
             'timezone' => ['nullable', 'timezone:all'],
-        ]);
+        ], ['phone.regex' => 'Enter a valid phone number, e.g. +92 300 1234567.', 'whatsapp.regex' => 'Enter a valid WhatsApp number, e.g. +92 300 1234567.']);
 
-        $user->fill(['name' => $this->name, 'email' => $this->email, 'timezone' => $this->timezone ?: null])->save();
+        $user->fill([
+            'name' => $this->name,
+            'email' => $this->email,
+            'phone' => $this->phone ?: null,
+            'whatsapp' => $this->whatsapp ?: null,
+            'timezone' => $this->timezone ?: null,
+        ])->save();
         $audit->log('user.profile_updated', $user, 'Profile updated', $audit->changes($user));
         $this->toast('Profile saved.');
     }
@@ -83,6 +99,12 @@ class Profile extends Component
     {
         $this->validate(['tokenName' => ['required', 'string', 'max:60']], [], ['tokenName' => 'token name']);
 
+        if (! app(PlanLimiter::class)->allows(auth()->user(), 'allow_api')) {
+            $this->addError('tokenName', 'REST API access is not included in your plan. Upgrade on the Billing page to use the API.');
+
+            return;
+        }
+
         $token = auth()->user()->createToken($this->tokenName);
         $this->newToken = $token->plainTextToken;
         $audit->log('api.token_created', auth()->user(), "API token “{$this->tokenName}” created");
@@ -109,6 +131,7 @@ class Profile extends Component
     {
         return view('livewire.profile', [
             'tokens' => auth()->user()->tokens()->latest()->get(),
+            'apiAllowed' => app(PlanLimiter::class)->allows(auth()->user(), 'allow_api'),
             'timezones' => \DateTimeZone::listIdentifiers(),
         ]);
     }

@@ -2,14 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToAccount;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['name', 'slug', 'color'])]
+#[Fillable(['user_id', 'name', 'slug', 'color'])]
 class Tag extends Model
 {
+    use BelongsToAccount;
+
     public const COLORS = ['slate', 'red', 'amber', 'green', 'teal', 'blue', 'indigo', 'purple', 'pink'];
 
     protected static function booted(): void
@@ -28,12 +31,12 @@ class Tag extends Model
     }
 
     /**
-     * Resolve tag names to ids, creating missing tags.
+     * Resolve tag names to ids of the given account, creating missing tags.
      *
      * @param  iterable<string>  $names
      * @return list<int>
      */
-    public static function idsFor(iterable $names): array
+    public static function idsFor(iterable $names, ?int $ownerId): array
     {
         $ids = [];
 
@@ -44,7 +47,8 @@ class Tag extends Model
                 continue;
             }
 
-            $ids[] = static::firstOrCreate(['slug' => Str::slug($name)], ['name' => $name])->id;
+            $ids[] = static::query()->ownedBy($ownerId)
+                ->firstOrCreate(['slug' => Str::slug($name)], ['name' => $name, 'user_id' => $ownerId])->id;
         }
 
         return array_values(array_unique($ids));

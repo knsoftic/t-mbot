@@ -6,6 +6,7 @@ use App\Enums\BotStatus;
 use App\Enums\CampaignStatus;
 use App\Enums\ConnectionStatus;
 use App\Events\BotConnectionFailed;
+use App\Models\Scopes\AccountScope;
 use App\Models\TelegramBot;
 use App\Models\User;
 use App\Services\Telegram\TelegramApiException;
@@ -26,6 +27,7 @@ class BotService
     public function __construct(
         private readonly TelegramService $telegram,
         private readonly AuditLogger $audit,
+        private readonly PlanLimiter $limiter,
     ) {}
 
     /**
@@ -55,9 +57,11 @@ class BotService
     public function create(array $data, ?User $user = null): TelegramBot
     {
         $token = trim($data['token']);
+        $this->limiter->assertCanAdd($user, 'max_bots', 'token');
         $this->assertTokenIsNew($token);
 
         $bot = new TelegramBot([
+            'user_id' => $user?->id,
             'name' => $data['name'],
             'token' => $token,
             'status' => $data['status'],
@@ -170,7 +174,9 @@ class BotService
 
     private function assertTokenIsNew(string $token, ?TelegramBot $ignore = null): void
     {
+        // Checked across all accounts: one Telegram bot can only be in one account.
         $exists = TelegramBot::withTrashed()
+            ->withoutGlobalScope(AccountScope::class)
             ->where('token_hash', TelegramBot::hashToken($token))
             ->when($ignore, fn ($q) => $q->whereKeyNot($ignore->id))
             ->exists();

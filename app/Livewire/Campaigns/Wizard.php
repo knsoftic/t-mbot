@@ -17,8 +17,10 @@ use App\Models\TelegramBot;
 use App\Models\TelegramDestination;
 use App\Services\CampaignBuilder;
 use App\Services\CampaignService;
+use App\Services\PlanLimiter;
 use App\Services\ScheduleCalculator;
 use App\Services\SettingsService;
+use App\Support\Accounts;
 use App\Support\Permissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Validator;
@@ -262,7 +264,7 @@ class Wizard extends Component
 
     public function addContent(int $contentId): void
     {
-        $content = Content::query()->find($contentId);
+        $content = $this->contentQuery()->find($contentId);
 
         if (! $content) {
             return;
@@ -371,7 +373,7 @@ class Wizard extends Component
 
         $rules = match ($step) {
             1 => ['name' => ['required', 'string', 'max:150'], 'description' => ['nullable', 'string', 'max:2000']],
-            2 => ['bot_id' => ['required', 'exists:telegram_bots,id']],
+            2 => ['bot_id' => ['required', Accounts::exists('telegram_bots')]],
             3 => [
                 'destination_id' => ['required', function ($a, $v, $fail) {
                     if (! TelegramDestination::query()->whereKey($v)->where('bot_id', $this->bot_id)->exists()) {
@@ -434,10 +436,19 @@ class Wizard extends Component
             'end_time' => ['nullable', 'date_format:H:i'],
         ];
 
+        // Plans set the shortest interval an account may post at.
+        $planInterval = function (string $attribute, $value, \Closure $fail) {
+            $min = app(PlanLimiter::class)->minIntervalSeconds($this->botOwnerId());
+
+            if ($this->intervalSeconds() < $min) {
+                $fail('Your plan allows posting at most every '.intdiv($min, 60).' minute(s). Choose a longer interval or upgrade your plan.');
+            }
+        };
+
         $rules += match ($this->trigger_type) {
             'interval' => $this->interval_preset === 'custom'
-                ? ['custom_interval_minutes' => ['required', 'integer', 'min:1', 'max:44640']]
-                : ['interval_preset' => ['required', 'in:'.implode(',', array_keys(self::INTERVAL_PRESETS)).',custom']],
+                ? ['custom_interval_minutes' => ['required', 'integer', 'min:1', 'max:44640', $planInterval]]
+                : ['interval_preset' => ['required', 'in:'.implode(',', array_keys(self::INTERVAL_PRESETS)).',custom', $planInterval]],
             'fixed_time' => ['fixed_times' => ['array', 'min:1', 'max:48'], 'fixed_times.*.time' => ['required', 'date_format:H:i', 'distinct']],
             'daily' => ['daily_time' => ['required', 'date_format:H:i']],
             'weekly' => ['weekly_time' => ['required', 'date_format:H:i'], 'weekly_days' => ['array', 'min:1'], 'weekly_days.*' => ['integer', 'between:1,7']],
@@ -555,11 +566,26 @@ class Wizard extends Component
 
     private function contentQuery()
     {
+        $owner = $this->botOwnerId();
+
         return Content::query()
             ->active()
+            // A customer's campaign only offers that customer's content (staff see everything).
+            ->when(Accounts::isCustomer($owner), fn ($q) => $q->ownedBy($owner))
             ->search($this->contentSearch)
             ->when($this->contentType !== '', fn ($q) => $q->where('type', $this->contentType))
             ->latest();
+    }
+
+    private function botOwnerId(): ?int
+    {
+        if ($this->bot_id === '') {
+            return auth()->user()?->isCustomer() ? (int) auth()->id() : null;
+        }
+
+        $owner = TelegramBot::query()->whereKey($this->bot_id)->value('user_id');
+
+        return $owner === null ? null : (int) $owner;
     }
 
     /**

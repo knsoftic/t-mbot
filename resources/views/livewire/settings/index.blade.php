@@ -3,7 +3,7 @@
 
     <div class="grid gap-6 lg:grid-cols-4">
         <nav class="card h-fit p-2 lg:col-span-1">
-            @foreach (['general' => ['General', 'cog'], 'telegram' => ['Telegram', 'send'], 'ai' => ['AI (offline)', 'sparkles'], 'queue' => ['Queue', 'list'], 'storage' => ['Storage', 'server'], 'notifications' => ['Notifications', 'bell']] as $key => [$label, $icon])
+            @foreach (['general' => ['General', 'cog'], 'telegram' => ['Telegram', 'send'], 'ai' => ['AI (offline)', 'sparkles'], 'billing' => ['Registration & billing', 'credit-card'], 'queue' => ['Queue', 'list'], 'storage' => ['Storage', 'server'], 'notifications' => ['Notifications', 'bell']] as $key => [$label, $icon])
                 <button type="button" wire:click="$set('tab', '{{ $key }}')" @class([
                     'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium',
                     'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-200' => $tab === $key,
@@ -106,6 +106,48 @@
                     <p class="text-xs text-slate-500">Installed models: @foreach ($aiCheck['models'] as $m)<span class="kbd-pill">{{ $m }}</span> @endforeach</p>
                 @endif
                 <x-docs.callout type="info">Server par Ollama install karne ka tareeqa <a href="{{ route('help.guide') }}#ai" wire:navigate class="underline">User Guide → AI</a> mein hai. 2 CPU / 8 GB RAM wale server par 1–1.5B model ki salah hai.</x-docs.callout>
+            @elseif ($tab === 'billing')
+                <h2 class="card-title">Registration & billing</h2>
+                <label class="flex items-center gap-2 text-sm font-medium"><input type="checkbox" wire:model="form.registration.enabled" class="checkbox"> Allow people to create an account (sign-up page)</label>
+                <p class="-mt-3 text-xs text-slate-500">New accounts start on the default plan right away (<a href="{{ route('admin.plans.index') }}" wire:navigate class="underline">Plans</a>). Sign-up link: <span class="kbd-pill">{{ route('register') }}</span> · public pricing: <span class="kbd-pill">{{ route('pricing') }}</span></p>
+
+                @php $modes = \App\Services\BillingService::FIELD_MODES; @endphp
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-field label="Mobile / WhatsApp number at sign-up" for="form.registration.phone">
+                        <select id="form.registration.phone" wire:model="form.registration.phone" class="input">
+                            @foreach ($modes as $value => $label) <option value="{{ $value }}">{{ $label }}</option> @endforeach
+                        </select>
+                    </x-field>
+                </div>
+
+                <div>
+                    <div class="label">Contact details on the plan purchase form</div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        @foreach (\App\Services\BillingService::CONTACT_FIELDS as $field => $label)
+                            <x-field :label="$label" :for="'form.billing.'.$field">
+                                <select id="form.billing.{{ $field }}" wire:model="form.billing.{{ $field }}" class="input">
+                                    @foreach ($modes as $value => $modeLabel) <option value="{{ $value }}">{{ $modeLabel }}</option> @endforeach
+                                </select>
+                            </x-field>
+                        @endforeach
+                    </div>
+                </div>
+
+                <x-field label="Payment instructions shown at checkout" for="form.billing.instructions" hint="General text under every payment method (each method also has its own instructions).">
+                    <textarea id="form.billing.instructions" wire:model="form.billing.instructions" rows="3" class="input"></textarea>
+                </x-field>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-field label="Support WhatsApp number" for="form.billing.support_whatsapp" hint="Shown to customers on the Billing page. With country code.">
+                        <input id="form.billing.support_whatsapp" type="tel" wire:model="form.billing.support_whatsapp" class="input" placeholder="+92 300 1234567">
+                    </x-field>
+                    <x-field label="Support e-mail" for="form.billing.support_email">
+                        <input id="form.billing.support_email" type="email" wire:model="form.billing.support_email" class="input">
+                    </x-field>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <a href="{{ route('admin.payment-methods.index') }}" wire:navigate class="btn btn-secondary btn-sm"><x-icon name="banknotes" class="size-4" /> Payment methods</a>
+                    <a href="{{ route('admin.orders.index') }}" wire:navigate class="btn btn-secondary btn-sm"><x-icon name="inbox" class="size-4" /> Purchase requests</a>
+                </div>
             @elseif ($tab === 'queue')
                 <h2 class="card-title">Queue</h2>
                 <p class="text-sm text-slate-600 dark:text-slate-300">The queue connection is infrastructure configuration and is set in <span class="kbd-pill">.env</span> (changing it at runtime would orphan queued jobs). Current values:</p>

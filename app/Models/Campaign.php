@@ -8,6 +8,7 @@ use App\Enums\ItemStatus;
 use App\Enums\PostingOrder;
 use App\Enums\RepeatMode;
 use App\Enums\TriggerType;
+use App\Models\Concerns\BelongsToAccount;
 use Database\Factories\CampaignFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,14 +20,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 
 #[Fillable([
-    'name', 'description', 'bot_id', 'destination_id', 'test_mode', 'test_destination_id', 'status',
+    'user_id', 'name', 'description', 'bot_id', 'destination_id', 'test_mode', 'test_destination_id', 'status',
     'posting_order', 'trigger_type', 'start_at', 'end_at', 'timezone', 'interval_seconds',
     'repeat_mode', 'repeat_limit', 'failure_behavior', 'max_retries', 'retry_delay_seconds', 'created_by',
 ])]
 class Campaign extends Model
 {
     /** @use HasFactory<CampaignFactory> */
-    use HasFactory, SoftDeletes;
+    use BelongsToAccount, HasFactory, SoftDeletes;
 
     /**
      * Mirror the column defaults so unsaved / freshly created models are complete.

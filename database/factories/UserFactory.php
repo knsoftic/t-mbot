@@ -3,8 +3,10 @@
 namespace Database\Factories;
 
 use App\Enums\UserStatus;
+use App\Models\Plan;
 use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -55,6 +57,26 @@ class UserFactory extends Factory
     public function admin(): static
     {
         return $this->withRole(Role::ADMIN);
+    }
+
+    /**
+     * A registered customer on the default (free) plan, or on $planSlug.
+     */
+    public function customer(?string $planSlug = null): static
+    {
+        return $this->withRole(Role::CUSTOMER)->state(function () use ($planSlug) {
+            if (! Plan::query()->exists()) {
+                (new PlansSeeder)->run();
+            }
+
+            $plan = $planSlug ? Plan::query()->where('slug', $planSlug)->firstOrFail() : Plan::fallback();
+
+            return [
+                'plan_id' => $plan->id,
+                'plan_started_at' => now(),
+                'plan_expires_at' => $plan->is_default ? null : now()->addMonth(),
+            ];
+        });
     }
 
     public function disabled(): static

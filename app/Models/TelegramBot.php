@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BotStatus;
 use App\Enums\ConnectionStatus;
+use App\Models\Concerns\BelongsToAccount;
 use Database\Factories\TelegramBotFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -14,12 +15,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['name', 'username', 'token', 'status', 'description', 'created_by'])]
+#[Fillable(['user_id', 'name', 'username', 'token', 'status', 'description', 'created_by'])]
 #[Hidden(['token', 'token_hash'])]
 class TelegramBot extends Model
 {
     /** @use HasFactory<TelegramBotFactory> */
-    use HasFactory, SoftDeletes;
+    use BelongsToAccount, HasFactory, SoftDeletes;
 
     protected function casts(): array
     {

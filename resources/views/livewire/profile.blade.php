@@ -6,6 +6,10 @@
             <h2 class="card-title">Account</h2>
             <x-field label="Name" for="name" required><input id="name" type="text" wire:model="name" class="input"></x-field>
             <x-field label="E-mail" for="email" required><input id="email" type="email" wire:model="email" class="input"></x-field>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <x-field label="Mobile number" for="phone"><input id="phone" type="tel" wire:model="phone" class="input" placeholder="+92 300 1234567" autocomplete="tel"></x-field>
+                <x-field label="WhatsApp number" for="whatsapp"><input id="whatsapp" type="tel" wire:model="whatsapp" class="input" placeholder="+92 300 1234567"></x-field>
+            </div>
             <x-field label="Timezone" for="timezone" hint="Dates in the panel are shown in this timezone.">
                 <select id="timezone" wire:model="timezone" class="input">
                     <option value="">System default</option>
@@ -38,11 +42,15 @@
                 </div>
             @endif
 
-            <form wire:submit="createToken" class="mt-4 flex gap-2">
-                <input type="text" wire:model="tokenName" class="input sm:w-72" placeholder="Token name, e.g. Android app">
-                <button type="submit" class="btn btn-primary">Create token</button>
-            </form>
-            @error('tokenName') <p class="error">{{ $message }}</p> @enderror
+            @if ($apiAllowed)
+                <form wire:submit="createToken" class="mt-4 flex gap-2">
+                    <input type="text" wire:model="tokenName" class="input sm:w-72" placeholder="Token name, e.g. Android app">
+                    <button type="submit" class="btn btn-primary">Create token</button>
+                </form>
+                @error('tokenName') <p class="error">{{ $message }}</p> @enderror
+            @else
+                <x-docs.callout type="info" class="mt-4">REST API access is part of the higher plans. <a href="{{ route('billing.index') }}" wire:navigate class="font-medium underline">See plans</a></x-docs.callout>
+            @endif
 
             <ul class="mt-4 divide-y divide-slate-100 dark:divide-slate-800">
                 @forelse ($tokens as $token)

@@ -9,10 +9,13 @@ use App\Enums\DestinationType;
 use App\Events\DestinationPermissionFailed;
 use App\Jobs\TestDestinationJob;
 use App\Models\Campaign;
+use App\Models\Scopes\AccountScope;
+use App\Models\TelegramBot;
 use App\Models\TelegramDestination;
 use App\Models\User;
 use App\Services\Telegram\TelegramApiException;
 use App\Services\Telegram\TelegramService;
+use App\Support\Accounts;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +26,7 @@ class DestinationService
         private readonly TelegramService $telegram,
         private readonly SettingsService $settings,
         private readonly AuditLogger $audit,
+        private readonly PlanLimiter $limiter,
     ) {}
 
     /**
@@ -31,7 +35,7 @@ class DestinationService
     public static function rules(?TelegramDestination $destination = null): array
     {
         return [
-            'bot_id' => ['required', 'integer', Rule::exists('telegram_bots', 'id')->whereNull('deleted_at')],
+            'bot_id' => ['required', 'integer', Accounts::exists('telegram_bots')],
             'name' => ['required', 'string', 'max:120'],
             'chat_id' => ['required', 'string', 'max:100', 'regex:/^(-?\d{3,}|@?[A-Za-z][A-Za-z0-9_]{3,}|(https?:\/\/)?t\.me\/[A-Za-z][A-Za-z0-9_]{3,})$/'],
             'type' => ['required', Rule::enum(DestinationType::class)],
@@ -57,7 +61,12 @@ class DestinationService
         $data['chat_id'] = $this->normalizeInput($data['chat_id']);
         $this->assertUnique((int) $data['bot_id'], $data['chat_id']);
 
+        // A channel or group belongs to the account that owns its bot.
+        $ownerId = $this->botOwner((int) $data['bot_id']);
+        $this->limiter->assertCanAdd($ownerId, self::limitFor($data['type']), 'chat_id');
+
         $destination = TelegramDestination::create($data + [
+            'user_id' => $ownerId,
             'username' => str_starts_with($data['chat_id'], '@') ? ltrim($data['chat_id'], '@') : null,
             'created_by' => $user?->id,
         ]);
@@ -76,6 +85,17 @@ class DestinationService
         $this->assertUnique((int) $data['bot_id'], $data['chat_id'], $destination);
 
         $destination->fill($data);
+
+        if ($destination->isDirty('bot_id')) {
+            $destination->user_id = $this->botOwner((int) $data['bot_id']);
+        }
+
+        // Turning a group into a channel (or the other way round) counts against the other limit.
+        $otherLimit = self::limitFor($destination->type) !== self::limitFor($destination->getOriginal('type'));
+
+        if ($destination->isDirty('user_id') || ($destination->isDirty('type') && $otherLimit)) {
+            $this->limiter->assertCanAdd($destination->user_id, self::limitFor($destination->type), 'type');
+        }
 
         if ($destination->isDirty(['chat_id', 'bot_id'])) {
             $destination->connection_status = ConnectionStatus::Unknown;
@@ -225,6 +245,23 @@ class DestinationService
         }
 
         return ['ok' => false, 'message' => $message];
+    }
+
+    /**
+     * The plan limit a destination type counts against.
+     */
+    public static function limitFor(DestinationType|string|null $type): string
+    {
+        $type = $type instanceof DestinationType ? $type : DestinationType::tryFrom((string) $type);
+
+        return $type === DestinationType::Channel ? 'max_channels' : 'max_groups';
+    }
+
+    private function botOwner(int $botId): ?int
+    {
+        $owner = TelegramBot::withTrashed()->withoutGlobalScope(AccountScope::class)->whereKey($botId)->value('user_id');
+
+        return $owner === null ? null : (int) $owner;
     }
 
     private function normalizeInput(string $chatId): string

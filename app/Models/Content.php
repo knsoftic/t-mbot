@@ -6,6 +6,7 @@ use App\Enums\ContentSource;
 use App\Enums\ContentStatus;
 use App\Enums\ContentType;
 use App\Enums\ParseMode;
+use App\Models\Concerns\BelongsToAccount;
 use Database\Factories\ContentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,14 +19,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 #[Fillable([
-    'title', 'type', 'source', 'text', 'caption', 'parse_mode', 'media_url', 'media_disk', 'media_path',
+    'user_id', 'title', 'type', 'source', 'text', 'caption', 'parse_mode', 'media_url', 'media_disk', 'media_path',
     'media_mime', 'media_size', 'telegram_file_id', 'thumbnail', 'disable_notification',
     'disable_web_page_preview', 'protect_content', 'status', 'notes', 'metadata', 'created_by',
 ])]
 class Content extends Model
 {
     /** @use HasFactory<ContentFactory> */
-    use HasFactory, SoftDeletes;
+    use BelongsToAccount, HasFactory, SoftDeletes;
 
     protected function casts(): array
     {

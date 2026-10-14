@@ -11,6 +11,7 @@ use App\Models\Content;
 use App\Models\PostingLog;
 use App\Services\CampaignBuilder;
 use App\Services\CampaignService;
+use App\Support\Accounts;
 use App\Support\Permissions;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -151,7 +152,14 @@ class Show extends Component
     public function addSelectedContent(CampaignBuilder $builder): void
     {
         $this->authorize(Permissions::CAMPAIGNS_MANAGE);
-        $count = $builder->addContents($this->campaign(), array_map('intval', $this->addSelected), auth()->user());
+        $count = 0;
+
+        if (! $this->attempt(function () use ($builder, &$count) {
+            $count = $builder->addContents($this->campaign(), array_map('intval', $this->addSelected), auth()->user());
+        })) {
+            return;
+        }
+
         $this->showAdd = false;
         $this->addSelected = [];
         $this->toast("{$count} item(s) added to the end of the sequence.");
@@ -190,7 +198,9 @@ class Show extends Component
             'lastLog' => $lastLog,
             'problems' => in_array($campaign->status, [CampaignStatus::Draft, CampaignStatus::Paused, CampaignStatus::Failed], true) ? $service->readinessProblems($campaign) : [],
             'recentLogs' => PostingLog::query()->with('content:id,title')->where('campaign_id', $campaign->id)->latest('id')->limit(8)->get(),
-            'addContents' => $this->showAdd ? Content::query()->active()->search($this->addSearch)->latest()->paginate(10, pageName: 'addPage') : null,
+            'addContents' => $this->showAdd ? Content::query()->active()
+                ->when(Accounts::isCustomer($campaign->user_id), fn ($q) => $q->ownedBy($campaign->user_id))
+                ->search($this->addSearch)->latest()->paginate(10, pageName: 'addPage') : null,
             'previewContent' => $this->showPreview && $this->previewContentId ? Content::withTrashed()->find($this->previewContentId) : null,
             'poll' => $campaign->status->isActive() || $inFlight,
         ])->title($campaign->name);

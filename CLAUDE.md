@@ -14,6 +14,7 @@ Laravel 13 + Livewire 4 + Tailwind 4 admin panel and posting engine. See README.
 - Campaign lifecycle and the locked claim step: `CampaignService::process()`; delivery/retry rules: `PostingService`; time math: `ScheduleCalculator` (UTC in/out).
 - Never send posts from HTTP requests — dispatch jobs. Never expose `TelegramBot::$token` (hidden + encrypted; API uses `masked_token`).
 - Permissions: slugs in `App\Support\Permissions`; Super Admin bypass via `Gate::before`.
+- Accounts: bots, destinations, contents, tags, campaigns and posting logs have an owner (`user_id`, trait `BelongsToAccount` + `AccountScope`). Users without `accounts.view-all` are customers: they only see their own rows and are limited by their plan (`PlanLimiter`). Validation `exists` rules must use `Accounts::exists()`. Purchases / approval / expiry: `BillingService`.
 
 ## Conventions
 - Run `.tools/php84/php.exe vendor/bin/pint` and `.tools/php84/php.exe artisan test` before finishing; tests must not hit the real Telegram API (`tests/Support/FakeTelegram.php`).

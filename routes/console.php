@@ -31,6 +31,12 @@ Schedule::command('bots:check')
     ->withoutOverlapping(30)
     ->runInBackground();
 
+// Subscriptions: expiry reminders and the move back to the free plan.
+Schedule::command('plans:expire')
+    ->hourly()
+    ->withoutOverlapping(30)
+    ->runInBackground();
+
 // Worker heartbeats for the System Health page.
 Schedule::call(function () {
     foreach (config('telegram.queues') as $queue) {

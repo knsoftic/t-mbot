@@ -372,9 +372,9 @@ ollama run qwen2.5:1.5b "Write one short friendly Telegram post about Monday mot
 
             {{-- 15. Users --}}
             <x-docs.section id="users" title="15. Users aur Roles" icon="users">
-                <h3>Administrators</h3>
+                <h3>Users</h3>
                 <x-docs.steps>
-                    <li><a href="{{ route('users.index') }}" wire:navigate>Users → Administrators</a> → <strong>Add user</strong>: naam, e-mail, role, status aur password.</li>
+                    <li><a href="{{ route('users.index') }}" wire:navigate>Users → Users</a> → <strong>Add user</strong>: naam, e-mail, role, status aur password.</li>
                     <li><strong>⋮ menu</strong> se: naya password set karna, reset link e-mail karna, disable / enable, delete.</li>
                 </x-docs.steps>
                 <p>Disable kiya gaya user foran har jagah se logout ho jata hai aur us ke API tokens band ho jate hain. Aap khud ko disable / delete nahi kar sakte, aur aakhri active Super Admin ko bhi nahi.</p>
@@ -383,10 +383,47 @@ ollama run qwen2.5:1.5b "Write one short friendly Telegram post about Monday mot
                     <thead><tr><th>Role</th><th>Ikhtiyar</th></tr></thead>
                     <tbody>
                         <tr><td><strong>Super Admin</strong></td><td>Sab kuch, users, roles aur settings samet.</td></tr>
-                        <tr><td><strong>Admin</strong></td><td>Bots, channels, content, campaigns, logs, failed jobs aur system health. Users, roles, settings aur audit log nahi.</td></tr>
+                        <tr><td><strong>Admin</strong></td><td>Har account ke bots, channels, content, campaigns, logs, failed jobs, system health aur purchase requests. Users, roles, settings, plans aur audit log nahi.</td></tr>
+                        <tr><td><strong>Customer</strong></td><td>Register karne wale log: sirf apne bots, channels, content aur campaigns, apne plan ki limits ke andar.</td></tr>
                     </tbody>
                 </table>
+                <p>Jis role mein <strong>“Staff: all accounts”</strong> permission ho woh staff hai: sab accounts ka data dekhta hai aur us par koi plan limit nahi. Baqi har role customer jaisa hai.</p>
                 <p><a href="{{ route('roles.index') }}" wire:navigate>Roles</a> page par <strong>New role</strong> se apna role bana kar checkboxes se permissions chunein (jaise sirf campaigns dekhne wala "Viewer"). Sidebar har user ko sirf woh pages dikhata hai jin ki ijazat hai.</p>
+            </x-docs.section>
+
+            {{-- Accounts, plans and billing --}}
+            <x-docs.section id="billing" title="Accounts, plans aur billing" icon="credit-card">
+                <p>Koi bhi <a href="{{ route('register') }}">Create account</a> se apna account bana sakta hai: naam, e-mail, Mobile/WhatsApp number aur password. Account foran <strong>Free</strong> plan par chal parta hai. Har customer sirf apne bots, channels, groups, content aur campaigns dekhta hai; doosre accounts ka data kabhi nahi.</p>
+                <h3>Plan ki limits</h3>
+                <table>
+                    <thead><tr><th>Limit</th><th>Kya hota hai</th></tr></thead>
+                    <tbody>
+                        <tr><td>Bots / Channels / Groups / Campaigns / Content</td><td>Limit poori ho to naya add nahi hota; message mein upgrade ka kaha jata hai. Purana kuch delete nahi hota.</td></tr>
+                        <tr><td>Posts per day / week / month</td><td>Limit poori ho to post <strong>ruk jati hai</strong> aur reset hote hi (agla din / hafta / mahina, aap ke timezone mein) <strong>khud chal parti hai</strong>. Aap ko ek notification milti hai.</td></tr>
+                        <tr><td>Shortest interval</td><td>Interval campaign is se zyada tez post nahi kar sakti (Free: 30 minute).</td></tr>
+                        <tr><td>Media uploads / AI / API</td><td>Sirf un plans mein jin mein shamil hon.</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Plan khareedna (customer)</h3>
+                <x-docs.steps>
+                    <li>Sidebar → <a href="{{ route('billing.index') }}" wire:navigate>Billing & plans</a>: apna plan, istemal aur plans dekhein. Plan par <strong>Choose</strong> dabayein.</li>
+                    <li>Payment method chunein (jaise USDT, bank). Address <strong>Copy</strong> karein, raqam (USD) bhejein.</li>
+                    <li>Transaction ID / reference likhein, chahein to screenshot lagayein, apne contact details check karein aur <strong>“maloomat sahi aur valid hain”</strong> par tick karke <strong>Send purchase request</strong>.</li>
+                    <li>Request <strong>Pending</strong> rehti hai jab tak admin payment check kare. Approve hote hi plan 1 mahine ke liye chal parta hai aur notification aati hai.</li>
+                    <li>Renew: wahi plan dobara khareedne se expiry mein ek mahina aur jur jata hai. Expiry se 3 din pehle yaad-dihani aati hai; expiry par account Free par aa jata hai.</li>
+                </x-docs.steps>
+
+                <h3>Requests sambhalna (admin)</h3>
+                <x-docs.steps>
+                    <li><a href="{{ route('admin.payment-methods.index') }}" wire:navigate>Sales → Payment methods</a>: naam, address / account number, account holder, hidayat aur QR image add karein.</li>
+                    <li><a href="{{ route('admin.plans.index') }}" wire:navigate>Sales → Plans</a>: keemat (USD / mahina), har limit (khaali = unlimited) aur features. Plan hide kar sakte hain; jo plan istemal mein ho woh delete nahi hota.</li>
+                    <li>Nayi request par notification aati hai aur sidebar mein <strong>Purchase requests</strong> par number dikhta hai. <strong>Review</strong> kholein: customer ke details, raqam, address, transaction ID aur screenshot.</li>
+                    <li>Zaroorat ho to <strong>E-mail</strong>, <strong>Call</strong> ya <strong>WhatsApp</strong> button se seedha rabta karein.</li>
+                    <li>Payment mil gayi ho to <strong>Approve & activate</strong> (expiry khud ban jati hai), warna wajah likh kar <strong>Reject</strong>. Customer ko dono soorat mein notification jati hai.</li>
+                    <li>Haath se plan dena (gift / correction): <a href="{{ route('users.index') }}" wire:navigate>Users</a> → ⋮ → <strong>Change plan</strong>.</li>
+                </x-docs.steps>
+                <x-docs.callout type="info">Settings → <strong>Registration & billing</strong>: sign-up on/off, aur Name / E-mail / Mobile / WhatsApp har field ko Required, Optional ya Hidden karein. Wahin checkout ki hidayat aur support WhatsApp / e-mail bhi.</x-docs.callout>
             </x-docs.section>
 
             {{-- 16. Settings --}}

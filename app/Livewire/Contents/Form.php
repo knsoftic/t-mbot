@@ -13,6 +13,7 @@ use App\Services\Ai\PostWriter;
 use App\Services\AuditLogger;
 use App\Services\ContentService;
 use App\Services\MediaUrlValidator;
+use App\Services\PlanLimiter;
 use App\Services\SettingsService;
 use App\Support\Permissions;
 use Illuminate\Support\Facades\Cache;
@@ -176,6 +177,13 @@ class Form extends Component
         if (! app(SettingsService::class)->get('ai.enabled')) {
             $this->aiStatus = 'failed';
             $this->aiError = 'AI is turned off. A Super Admin can enable it in Settings → AI.';
+
+            return;
+        }
+
+        if (! app(PlanLimiter::class)->allows(auth()->user(), 'allow_ai')) {
+            $this->aiStatus = 'failed';
+            $this->aiError = 'The AI post writer is not included in your plan. Upgrade on the Billing page to use it.';
 
             return;
         }
@@ -379,6 +387,7 @@ class Form extends Component
             'bodyLength' => mb_strlen($type === ContentType::Text ? $this->text : $this->caption),
             'bodyLimit' => $type === ContentType::Text ? 4096 : 1024,
             'aiEnabled' => (bool) app(SettingsService::class)->get('ai.enabled'),
+            'aiAllowed' => app(PlanLimiter::class)->allows(auth()->user(), 'allow_ai'),
         ])->title($this->content ? 'Edit content' : 'New content');
     }
 }

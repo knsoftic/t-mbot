@@ -21,6 +21,7 @@ npm run build
 echo "→ Database"
 php artisan migrate --force
 php artisan db:seed --class=RolesAndPermissionsSeeder --force
+php artisan db:seed --class=PlansSeeder --force
 
 echo "→ Caches"
 php artisan optimize:clear

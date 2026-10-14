@@ -55,7 +55,10 @@ class Index extends Component
 
         $this->validate([
             'name' => ['required', 'string', 'max:50', function ($attribute, $value, $fail) {
-                $exists = Tag::query()->where('slug', Str::slug($value))->when($this->editingId, fn ($q) => $q->whereKeyNot($this->editingId))->exists();
+                // Tag names are unique within one account.
+                $owner = $this->editingId ? Tag::query()->whereKey($this->editingId)->value('user_id') : auth()->id();
+                $exists = Tag::query()->ownedBy($owner === null ? null : (int) $owner)->where('slug', Str::slug($value))
+                    ->when($this->editingId, fn ($q) => $q->whereKeyNot($this->editingId))->exists();
 
                 if ($exists || Str::slug($value) === '') {
                     $fail($exists ? 'A tag with this name already exists.' : 'Use letters or numbers in the tag name.');

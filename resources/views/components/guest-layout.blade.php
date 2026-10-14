@@ -1,4 +1,4 @@
-@props(['title' => null])
+@props(['title' => null, 'wide' => false])
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
@@ -13,9 +13,15 @@
                 <div class="text-xs text-slate-500">Telegram auto-posting & automation</div>
             </div>
         </div>
-        <div class="card w-full max-w-md p-6 sm:p-8">
-            {{ $slot }}
-        </div>
+        @if ($wide)
+            <div class="w-full max-w-6xl">
+                {{ $slot }}
+            </div>
+        @else
+            <div class="card w-full max-w-md p-6 sm:p-8">
+                {{ $slot }}
+            </div>
+        @endif
         <p class="mt-6 text-xs text-slate-400">&copy; {{ date('Y') }} {{ config('app.name') }}</p>
     </div>
 </body>

@@ -98,7 +98,11 @@
                 <div class="flex items-center justify-between gap-3">
                     <h2 class="card-title">{{ $typeEnum->isMedia() ? 'Caption' : 'Message text' }} @if (! $typeEnum->isMedia())<span class="text-red-500">*</span>@endif</h2>
                     <div class="flex items-center gap-3">
-                        @if ($aiEnabled)
+                        @if ($aiEnabled && ! $aiAllowed)
+                            <a href="{{ route('billing.index') }}" wire:navigate class="btn btn-ghost btn-sm" title="The AI post writer is part of the paid plans">
+                                <x-icon name="sparkles" class="size-4 text-purple-500" /> AI (upgrade)
+                            </a>
+                        @elseif ($aiEnabled)
                             <button type="button" wire:click="openAi" class="btn btn-secondary btn-sm">
                                 @if ($aiStatus === 'pending')
                                     <x-spinner /> AI likh raha hai…
@@ -192,7 +196,7 @@
         <div wire:poll.2s="pollAi" class="hidden"></div>
     @endif
 
-    @if ($aiEnabled)
+    @if ($aiEnabled && $aiAllowed)
     <x-modal wire:model="showAi" title="✨ AI se likho" max-width="lg">
         <div class="space-y-4">
             <p class="text-sm text-slate-500">AI server par (offline) draft likhega aur woh {{ $typeEnum->isMedia() ? 'caption' : 'message text' }} mein aa jayega. Save karne se pehle zaroor parh kar theek karein; AI kabhi kabhi ghalat baat bhi likh deta hai.</p>

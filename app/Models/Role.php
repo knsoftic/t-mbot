@@ -14,6 +14,9 @@ class Role extends Model
 
     public const ADMIN = 'admin';
 
+    /** Registered users: own data only, limited by their plan. */
+    public const CUSTOMER = 'customer';
+
     protected function casts(): array
     {
         return ['is_system' => 'boolean'];

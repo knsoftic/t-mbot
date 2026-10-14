@@ -47,7 +47,7 @@ class NotifyRepeatedFailures
         }
 
         if ($campaign = Campaign::withTrashed()->find($campaignId)) {
-            $this->notifier->send(AdminAlert::repeatedFailures($campaign, $threshold));
+            $this->notifier->send(AdminAlert::repeatedFailures($campaign, $threshold), $campaign->user_id);
         }
     }
 }

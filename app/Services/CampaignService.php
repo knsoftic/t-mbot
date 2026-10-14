@@ -16,7 +16,9 @@ use App\Models\Campaign;
 use App\Models\CampaignItem;
 use App\Models\PostingLog;
 use App\Models\User;
+use App\Notifications\AdminAlert;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -36,6 +38,8 @@ class CampaignService
     public function __construct(
         private readonly ScheduleCalculator $calculator,
         private readonly AuditLogger $audit,
+        private readonly PlanLimiter $limiter,
+        private readonly AdminNotifier $notifier,
     ) {}
 
     // ------------------------------------------------------------------
@@ -312,6 +316,12 @@ class CampaignService
             throw ValidationException::withMessages(['campaign' => 'There are no pending items left. Restart the campaign to post again.']);
         }
 
+        $owner = $campaign->user_id ? User::query()->find($campaign->user_id) : null;
+
+        if ($owner && ($block = $this->limiter->sendingBlock($owner))) {
+            throw ValidationException::withMessages(['campaign' => $this->limitMessage($owner, $block)]);
+        }
+
         ProcessCampaignJob::dispatch($campaign->id, PostTrigger::Manual);
 
         $this->audit->log('campaign.run_now', $campaign, "Run Now triggered for \"{$campaign->name}\"", [], $user);
@@ -333,6 +343,7 @@ class CampaignService
             $item->save();
 
             PostingLog::create([
+                'user_id' => $campaign->user_id,
                 'campaign_id' => $campaign->id,
                 'campaign_item_id' => $item->id,
                 'bot_id' => $campaign->bot_id,
@@ -476,6 +487,12 @@ class CampaignService
                 }
             }
 
+            if ($block = $this->sendingBlock($campaign, $now)) {
+                $this->waitForSendingLimit($campaign, $item, $trigger, $block);
+
+                return 'limit_reached';
+            }
+
             $log = $this->claim($campaign, $item, $trigger, $now);
             $this->advanceSchedule($campaign, $trigger, $now);
 
@@ -554,6 +571,7 @@ class CampaignService
         $destination = $campaign->deliveryDestination();
 
         $log = PostingLog::create([
+            'user_id' => $campaign->user_id,
             'campaign_id' => $campaign->id,
             'campaign_item_id' => $item->id,
             'bot_id' => $campaign->bot_id,
@@ -575,6 +593,72 @@ class CampaignService
         $item->forceFill(['current_log_id' => $log->id])->save();
 
         return $log;
+    }
+
+    /**
+     * A customer's daily / weekly / monthly posting limit. The owner row is locked
+     * so campaigns of the same account running at the same moment count exactly.
+     *
+     * @return array{owner: User, period: string, used: int, limit: int, resets_at: CarbonImmutable}|null
+     */
+    private function sendingBlock(Campaign $campaign, CarbonImmutable $now): ?array
+    {
+        if ($campaign->user_id === null) {
+            return null;
+        }
+
+        $owner = User::query()->whereKey($campaign->user_id)->lockForUpdate()->first();
+
+        if (! $owner || ! $owner->isCustomer()) {
+            return null;
+        }
+
+        $block = $this->limiter->sendingBlock($owner, $now);
+
+        return $block === null ? null : ['owner' => $owner] + $block;
+    }
+
+    /**
+     * Nothing is lost: the post waits for the limit to reset and then goes out.
+     *
+     * @param  array{owner: User, period: string, used: int, limit: int, resets_at: CarbonImmutable}  $block
+     */
+    private function waitForSendingLimit(Campaign $campaign, CampaignItem $item, PostTrigger $trigger, array $block): void
+    {
+        if ($item->next_attempt_at !== null) {
+            // A waiting retry keeps its place and is picked up after the reset.
+            $item->forceFill(['next_attempt_at' => $block['resets_at']])->save();
+        } elseif ($trigger !== PostTrigger::Manual) {
+            $campaign->next_run_at = $block['resets_at'];
+            $campaign->save();
+        }
+
+        Log::channel('campaign')->info('Sending limit reached; post postponed', [
+            'campaign_id' => $campaign->id,
+            'user_id' => $campaign->user_id,
+            'period' => $block['period'],
+            'resumes_at' => $block['resets_at']->toIso8601String(),
+        ]);
+
+        $owner = $block['owner'];
+        $key = "alerts:sending-limit:{$owner->id}:{$block['period']}:{$block['resets_at']->getTimestamp()}";
+
+        DB::afterCommit(function () use ($owner, $block, $key) {
+            if (Cache::add($key, true, $block['resets_at'])) {
+                $this->notifier->toUser($owner, AdminAlert::sendingLimitReached($this->limitMessage($owner, $block)));
+            }
+        });
+    }
+
+    /**
+     * @param  array{period: string, used: int, limit: int, resets_at: CarbonImmutable}  $block
+     */
+    private function limitMessage(User $owner, array $block): string
+    {
+        $resumes = $block['resets_at']->setTimezone($owner->displayTimezone())->format('d M Y, H:i');
+        $period = ['day' => 'daily', 'week' => 'weekly', 'month' => 'monthly'][$block['period']] ?? $block['period'];
+
+        return "Your plan's {$period} posting limit is used up ({$block['used']}/{$block['limit']}). Posting continues automatically on {$resumes}, or upgrade your plan (Billing → Plans).";
     }
 
     private function advanceSchedule(Campaign $campaign, PostTrigger $trigger, CarbonImmutable $now): void

@@ -24,6 +24,8 @@ class CampaignFactory extends Factory
         return [
             'name' => fake()->unique()->words(3, true),
             'bot_id' => TelegramBot::factory(),
+            // A campaign belongs to the account that owns its bot.
+            'user_id' => fn (array $attributes) => TelegramBot::withoutGlobalScopes()->whereKey($attributes['bot_id'])->value('user_id'),
             'destination_id' => fn (array $attributes) => TelegramDestination::factory()->create(['bot_id' => $attributes['bot_id']])->id,
             'status' => CampaignStatus::Draft,
             'posting_order' => PostingOrder::Sequential,
@@ -45,7 +47,7 @@ class CampaignFactory extends Factory
     public function withItems(int|array $contents = 3): static
     {
         return $this->afterCreating(function (Campaign $campaign) use ($contents) {
-            $list = is_int($contents) ? Content::factory()->count($contents)->create()->all() : $contents;
+            $list = is_int($contents) ? Content::factory()->count($contents)->create(['user_id' => $campaign->user_id])->all() : $contents;
 
             foreach (array_values($list) as $index => $content) {
                 $campaign->campaignItems()->create([

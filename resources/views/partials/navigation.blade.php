@@ -1,6 +1,10 @@
 @php
     use App\Support\Permissions as P;
 
+    $user = auth()->user();
+    $pendingOrders = $user->can(P::ORDERS_MANAGE) ? \App\Models\PlanOrder::query()->pending()->count() : 0;
+
+    // [label, route, icon, permission (null = everyone), active patterns, badge]
     $sections = [
         null => [
             ['Dashboard', 'dashboard', 'home', P::DASHBOARD_VIEW, ['dashboard']],
@@ -23,8 +27,16 @@
             ['Failed Jobs', 'failed-jobs.index', 'warning', P::FAILED_JOBS_MANAGE, ['failed-jobs.*']],
             ['Audit Logs', 'audit-logs.index', 'shield', P::AUDIT_VIEW, ['audit-logs.*']],
         ],
+        'Account' => $user->isCustomer() ? [
+            ['Billing & plans', 'billing.index', 'credit-card', null, ['billing.*']],
+        ] : [],
+        'Sales' => [
+            ['Purchase requests', 'admin.orders.index', 'inbox', P::ORDERS_MANAGE, ['admin.orders.*'], $pendingOrders],
+            ['Plans', 'admin.plans.index', 'credit-card', P::PLANS_MANAGE, ['admin.plans.*']],
+            ['Payment methods', 'admin.payment-methods.index', 'banknotes', P::PLANS_MANAGE, ['admin.payment-methods.*']],
+        ],
         'Users' => [
-            ['Administrators', 'users.index', 'users', P::USERS_MANAGE, ['users.*']],
+            ['Users', 'users.index', 'users', P::USERS_MANAGE, ['users.*']],
             ['Roles', 'roles.index', 'key', P::ROLES_MANAGE, ['roles.*']],
         ],
         'System' => [
@@ -40,18 +52,22 @@
 
 @foreach ($sections as $heading => $links)
     {{-- A null permission means the link is open to every signed-in user. --}}
-    @php $visible = array_filter($links, fn ($l) => $l[3] === null || auth()->user()->can($l[3])); @endphp
+    @php $visible = array_filter($links, fn ($l) => $l[3] === null || $user->can($l[3])); @endphp
     @if ($visible)
         <div>
             @if ($heading)
                 <div class="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ $heading }}</div>
             @endif
             <div class="space-y-0.5">
-                @foreach ($visible as [$label, $route, $icon, $permission, $patterns])
+                @foreach ($visible as $link)
+                    @php [$label, $route, $icon, $permission, $patterns] = $link; $badge = $link[5] ?? 0; @endphp
                     <a href="{{ route($route) }}" wire:navigate
                        @class(['nav-link', 'nav-link-active' => request()->routeIs(...$patterns)])>
                         <x-icon :name="$icon" class="size-5" />
                         <span>{{ $label }}</span>
+                        @if ($badge > 0)
+                            <span class="ml-auto rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold tabular-nums text-white">{{ $badge }}</span>
+                        @endif
                     </a>
                 @endforeach
             </div>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsurePlanAllowsApi;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'active' => EnsureUserIsActive::class,
+            'plan.api' => EnsurePlanAllowsApi::class,
         ]);
 
         $middleware->redirectGuestsTo(fn () => route('login'));

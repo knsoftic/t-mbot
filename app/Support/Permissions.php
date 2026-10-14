@@ -46,6 +46,12 @@ final class Permissions
 
     public const SYSTEM_HEALTH = 'system.health';
 
+    public const ACCOUNTS_VIEW_ALL = 'accounts.view-all';
+
+    public const ORDERS_MANAGE = 'orders.manage';
+
+    public const PLANS_MANAGE = 'plans.manage';
+
     /**
      * @return array<string, array{name: string, group: string, description: string}>
      */
@@ -69,6 +75,26 @@ final class Permissions
             self::ROLES_MANAGE => ['name' => 'Manage roles', 'group' => 'Users', 'description' => 'Create roles and assign permissions.'],
             self::SETTINGS_MANAGE => ['name' => 'Manage settings', 'group' => 'System', 'description' => 'Change system settings.'],
             self::SYSTEM_HEALTH => ['name' => 'View system health', 'group' => 'System', 'description' => 'See database, queue, scheduler and Telegram health.'],
+            self::ACCOUNTS_VIEW_ALL => ['name' => 'Staff: all accounts', 'group' => 'Accounts & billing', 'description' => 'See and manage the bots, channels, content and campaigns of every user, without plan limits. Without it a user is a customer limited to their own data and plan.'],
+            self::ORDERS_MANAGE => ['name' => 'Handle purchase requests', 'group' => 'Accounts & billing', 'description' => 'See plan purchase requests, contact buyers, approve or reject payments and change user plans.'],
+            self::PLANS_MANAGE => ['name' => 'Manage plans & payment methods', 'group' => 'Accounts & billing', 'description' => 'Create and edit subscription plans, prices, limits and payment methods.'],
+        ];
+    }
+
+    /**
+     * Permissions of the built-in "Customer" role (registered users).
+     *
+     * @return list<string>
+     */
+    public static function customerDefaults(): array
+    {
+        return [
+            self::DASHBOARD_VIEW,
+            self::BOTS_VIEW, self::BOTS_MANAGE,
+            self::DESTINATIONS_VIEW, self::DESTINATIONS_MANAGE,
+            self::CONTENTS_VIEW, self::CONTENTS_MANAGE,
+            self::CAMPAIGNS_VIEW, self::CAMPAIGNS_MANAGE, self::CAMPAIGNS_OPERATE,
+            self::LOGS_VIEW,
         ];
     }
 
@@ -87,6 +113,7 @@ final class Permissions
             self::CAMPAIGNS_VIEW, self::CAMPAIGNS_MANAGE, self::CAMPAIGNS_OPERATE,
             self::LOGS_VIEW, self::FAILED_JOBS_MANAGE,
             self::SYSTEM_HEALTH,
+            self::ACCOUNTS_VIEW_ALL, self::ORDERS_MANAGE,
         ];
     }
 }

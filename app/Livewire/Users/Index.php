@@ -4,11 +4,17 @@ namespace App\Livewire\Users;
 
 use App\Enums\UserStatus;
 use App\Livewire\Concerns\InteractsWithUi;
+use App\Models\Campaign;
+use App\Models\Plan;
 use App\Models\Role;
+use App\Models\Scopes\AccountScope;
+use App\Models\TelegramBot;
 use App\Models\User;
 use App\Policies\UserPolicy;
 use App\Services\AuditLogger;
+use App\Services\BillingService;
 use App\Support\Permissions;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rule;
@@ -18,7 +24,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-#[Title('Administrators')]
+#[Title('Users')]
 class Index extends Component
 {
     use InteractsWithUi, WithPagination;
@@ -53,6 +59,15 @@ class Index extends Component
     public ?int $passwordUserId = null;
 
     public string $newPassword = '';
+
+    public bool $showPlan = false;
+
+    public ?int $planUserId = null;
+
+    public string $planId = '';
+
+    /** Last day of the plan (Y-m-d, in the admin's timezone). */
+    public string $planExpires = '';
 
     public function mount(): void
     {
@@ -214,10 +229,54 @@ class Index extends Component
             return;
         }
 
+        // Deleting the owner would leave bots and campaigns running without an account.
+        $ownsData = TelegramBot::withTrashed()->withoutGlobalScope(AccountScope::class)->where('user_id', $user->id)->exists()
+            || Campaign::withTrashed()->withoutGlobalScope(AccountScope::class)->where('user_id', $user->id)->exists();
+
+        if ($ownsData) {
+            $this->toast("{$user->email} owns bots or campaigns. Disable the account instead (its campaigns stop being editable but nothing is lost).", 'error');
+
+            return;
+        }
+
         $user->tokens()->delete();
         $user->delete();
         $audit->log('user.deleted', $user, "User {$user->email} deleted");
         $this->toast("{$user->email} deleted.");
+    }
+
+    public function openPlan(int $id): void
+    {
+        $this->authorize(Permissions::ORDERS_MANAGE);
+        $user = User::query()->findOrFail($id);
+        $this->planUserId = $user->id;
+        $this->planId = (string) ($user->plan_id ?? Plan::fallback()?->id);
+        $this->planExpires = $user->plan_expires_at
+            ? $user->plan_expires_at->setTimezone(display_tz())->format('Y-m-d')
+            : now(display_tz())->addMonthNoOverflow()->format('Y-m-d');
+        $this->resetValidation();
+        $this->showPlan = true;
+    }
+
+    /**
+     * Set a customer's plan by hand (gift, correction, payment received outside the panel).
+     */
+    public function savePlan(BillingService $billing): void
+    {
+        $this->authorize(Permissions::ORDERS_MANAGE);
+        $user = User::query()->findOrFail($this->planUserId);
+        $plan = Plan::query()->find((int) $this->planId);
+
+        $this->validate([
+            'planId' => ['required', Rule::exists('plans', 'id')],
+            'planExpires' => [$plan?->is_default ? 'nullable' : 'required', 'date_format:Y-m-d', 'after_or_equal:today'],
+        ], [], ['planId' => 'plan', 'planExpires' => 'valid until']);
+
+        $expires = $plan->is_default ? null : CarbonImmutable::parse($this->planExpires, display_tz())->endOfDay()->utc();
+        $billing->assignPlan($user, $plan, $expires, auth()->user());
+
+        $this->showPlan = false;
+        $this->toast("{$user->email} is now on {$plan->name}".($expires ? ' until '.display_time($expires, 'd M Y') : '').'.');
     }
 
     private function resetForm(): void
@@ -232,13 +291,14 @@ class Index extends Component
         $like = '%'.str_replace(['%', '_'], ['\%', '\_'], $this->search).'%';
 
         return view('livewire.users.index', [
-            'users' => User::query()->with('role')
+            'users' => User::query()->with(['role', 'plan'])
                 ->when($this->search !== '', fn ($q) => $q->where(fn ($w) => $w->where('name', 'like', $like)->orWhere('email', 'like', $like)))
                 ->when($this->roleFilter !== '', fn ($q) => $q->where('role_id', $this->roleFilter))
                 ->when($this->statusFilter !== '', fn ($q) => $q->where('status', $this->statusFilter))
                 ->orderBy('name')
                 ->paginate(20),
             'roles' => Role::query()->orderBy('name')->get(),
+            'plans' => Plan::query()->orderBy('sort_order')->orderBy('price_usd')->get(['id', 'name', 'price_usd', 'is_default']),
             'timezones' => \DateTimeZone::listIdentifiers(),
         ]);
     }

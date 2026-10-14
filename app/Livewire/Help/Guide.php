@@ -28,6 +28,7 @@ class Guide extends Component
         'monitoring' => 'Logs aur monitoring',
         'notifications' => 'Notifications',
         'users' => 'Users aur Roles',
+        'billing' => 'Accounts, plans aur billing',
         'settings' => 'Settings',
         'health' => 'System Health',
         'faq' => 'Masail aur hal',

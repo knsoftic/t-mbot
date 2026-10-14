@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/token', [AuthTokenController::class, 'store'])->middleware('throttle:api-auth')->name('api.auth.token');
 
-Route::middleware(['auth:sanctum', 'active', 'throttle:api'])->name('api.')->group(function () {
+Route::middleware(['auth:sanctum', 'active', 'plan.api', 'throttle:api'])->name('api.')->group(function () {
     Route::get('/me', [AuthTokenController::class, 'me'])->name('me');
     Route::delete('/auth/token', [AuthTokenController::class, 'destroy'])->name('auth.revoke');
 

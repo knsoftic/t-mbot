@@ -30,7 +30,7 @@ class NotifyCampaignStatusChange
         };
 
         if ($alert) {
-            $this->notifier->send($alert);
+            $this->notifier->send($alert, $event->campaign->user_id);
         }
     }
 }

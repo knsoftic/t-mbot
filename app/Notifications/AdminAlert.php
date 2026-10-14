@@ -3,8 +3,10 @@
 namespace App\Notifications;
 
 use App\Models\Campaign;
+use App\Models\PlanOrder;
 use App\Models\TelegramBot;
 use App\Models\TelegramDestination;
+use App\Models\User;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -57,6 +59,36 @@ class AdminAlert extends Notification
     public static function repeatedFailures(Campaign $campaign, int $count): self
     {
         return new self('repeated_failures', 'warning', 'Repeated posting failures', "The last {$count} posts of \"{$campaign->name}\" failed.", route('logs.index', ['campaign_id' => $campaign->id], false));
+    }
+
+    public static function sendingLimitReached(string $message): self
+    {
+        return new self('sending_limit', 'warning', 'Posting limit reached', $message, route('billing.index', [], false));
+    }
+
+    public static function orderSubmitted(PlanOrder $order): self
+    {
+        return new self('order_submitted', 'info', 'New plan purchase request', "{$order->contact_name} ({$order->user?->email}) requests {$order->plan?->name} for \${$order->amount_usd} via {$order->payment_method_name}. Verify the payment and approve or reject it.", route('admin.orders.index', ['order' => $order->id], false));
+    }
+
+    public static function orderApproved(PlanOrder $order): self
+    {
+        return new self('order_approved', 'success', 'Plan activated', "Your payment was verified: {$order->plan?->name} is active until {$order->expires_at?->setTimezone($order->user?->displayTimezone() ?? 'UTC')->format('d M Y')}.", route('billing.index', [], false));
+    }
+
+    public static function orderRejected(PlanOrder $order): self
+    {
+        return new self('order_rejected', 'danger', 'Plan request rejected', "Your {$order->plan?->name} request #{$order->id} was rejected".($order->admin_note ? ": {$order->admin_note}" : '.'), route('billing.index', [], false));
+    }
+
+    public static function planExpiring(User $user, int $days): self
+    {
+        return new self('plan_expiring', 'warning', 'Plan expires soon', "Your {$user->plan?->name} plan expires in {$days} day(s) on {$user->plan_expires_at?->setTimezone($user->displayTimezone())->format('d M Y')}. Renew it to keep your limits.", route('billing.index', [], false));
+    }
+
+    public static function planExpired(string $planName, ?string $fallbackName): self
+    {
+        return new self('plan_expired', 'danger', 'Plan expired', "Your {$planName} plan has expired. Your account now uses the ".($fallbackName ?? 'free').' plan limits. Renew any time on the Billing page.', route('billing.index', [], false));
     }
 
     /**

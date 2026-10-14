@@ -14,6 +14,7 @@ use App\Models\Content;
 use App\Models\PostingLog;
 use App\Models\TelegramBot;
 use App\Models\TelegramDestination;
+use App\Services\PlanLimiter;
 use App\Support\Permissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -87,6 +88,8 @@ class Dashboard extends Component
 
         $events = AuditLog::query()
             ->with('user:id,name')
+            // The audit log is not split by account: customers only see their own actions.
+            ->when(auth()->user()->isCustomer(), fn ($q) => $q->where('user_id', auth()->id()))
             ->whereIn('action', ['campaign.started', 'campaign.paused', 'campaign.resumed', 'campaign.stopped', 'campaign.restarted', 'campaign.run_now'])
             ->latest('id')->limit(8)->get()
             ->map(fn (AuditLog $log) => [
@@ -113,6 +116,7 @@ class Dashboard extends Component
                 ->limit(6)
                 ->get(),
             'attention' => Campaign::query()->where('status', CampaignStatus::Failed)->latest('updated_at')->limit(5)->get(['id', 'name', 'last_error']),
+            'usage' => auth()->user()->isCustomer() ? app(PlanLimiter::class)->usage(auth()->user()) : null,
         ]);
     }
 }

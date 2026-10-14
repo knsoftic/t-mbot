@@ -17,6 +17,8 @@ class TelegramDestinationFactory extends Factory
     {
         return [
             'bot_id' => TelegramBot::factory(),
+            // Same account as the bot, like DestinationService does.
+            'user_id' => fn (array $attributes) => TelegramBot::withoutGlobalScopes()->whereKey($attributes['bot_id'])->value('user_id'),
             'name' => fake()->unique()->words(2, true).' Channel',
             'chat_id' => '-100'.fake()->unique()->numerify('##########'),
             'type' => DestinationType::Channel,

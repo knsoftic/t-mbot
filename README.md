@@ -42,6 +42,7 @@ CONTENT → SEQUENCE → CAMPAIGN → BOT → DESTINATION → TRIGGER/SCHEDULE �
 | **Repeat** | Stop, repeat immediately, daily, weekly or indefinitely (optionally N times). |
 | **Monitoring** | Dashboard, schedules timeline, posting logs (with Telegram responses), failed jobs (retry/delete), audit log, system health, admin notifications (bell + optional e-mail). |
 | **Security** | Roles & permissions, account status, login throttling, password reset, CSRF/XSS protection, encrypted tokens, token redaction in logs, Sanctum API tokens, audit logging. |
+| **Accounts & subscriptions** | Public sign-up (`/register`) and pricing page (`/pricing`). Every customer works only with their own bots, channels, content and campaigns (global account scope + account-aware validation). Monthly plans in USD (Free, Plan 1–3 by default, fully editable) limit bots, channels, groups, campaigns, content, posts per day / week / month, the shortest interval, uploads, AI and API access. A used-up sending limit postpones posts until the reset instead of dropping them. Manual payments: admins manage payment methods (address, instructions, QR); customers send the transaction reference (+ optional screenshot); admins verify, contact the buyer by e-mail / phone / WhatsApp and approve or reject. Expiry, renewal (+1 month) and reminders are automatic. |
 | **Offline AI drafts** (optional) | "✨ AI se likho" in the content form writes a post/caption draft with a **local model on your own server** ([Ollama](https://ollama.com), e.g. `qwen2.5:1.5b`). English / Urdu / Roman Urdu / Hindi, tone, length, emojis, hashtags. No external AI service, no API key; drafts are never posted automatically. |
 
 ---
@@ -236,7 +237,7 @@ npm ci && npm run build
 cp .env.example .env && nano .env        # fill in DB_*, REDIS_*, APP_URL, MAIL_*
 php artisan key:generate
 php artisan migrate --force
-php artisan db:seed --force              # roles & permissions
+php artisan db:seed --force              # roles & permissions, starter plans
 php artisan app:create-admin             # first Super Admin
 php artisan storage:link
 php artisan optimize
@@ -395,3 +396,4 @@ Logs: `storage/logs/laravel.log` (application), `telegram-*.log` (Bot API calls)
 * **Multiple destinations per campaign**: `Campaign::destinations()` and per-log `destination_id` are already in place; extend the claim step to create one log per destination.
 * **Content sources** (RSS, Google Sheets, JSON/REST feeds, AI captions): create `Content` records through `ContentService::create()` from a scheduled command or a queued job; campaigns will pick them up like any other content.
 * **New permissions/roles**: add the slug to `App\Support\Permissions` and run `php artisan db:seed --class=RolesAndPermissionsSeeder`.
+* **Accounts**: a role with `accounts.view-all` is staff (sees every account, no plan limits); every other role is a customer. New account-owned tables use the `BelongsToAccount` trait (column `user_id`) and `Accounts::exists()` in validation rules. New plan limits go in `plans`, `Plan::RESOURCES / SENDING / FEATURES` and `PlanLimiter`.

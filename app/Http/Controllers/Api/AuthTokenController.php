@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\PlanLimiter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -35,6 +36,10 @@ class AuthTokenController extends Controller
 
         if (! $user->isActive()) {
             throw ValidationException::withMessages(['email' => 'This account is disabled.']);
+        }
+
+        if (! app(PlanLimiter::class)->allows($user, 'allow_api')) {
+            throw ValidationException::withMessages(['email' => 'REST API access is not included in your plan. Upgrade on the Billing page to use the API.']);
         }
 
         $token = $user->createToken($data['device_name']);

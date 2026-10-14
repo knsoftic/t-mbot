@@ -2,9 +2,13 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\BillingFileController;
 use App\Http\Controllers\BrandingLogoController;
 use App\Http\Controllers\ContentMediaController;
+use App\Livewire\Admin;
 use App\Livewire\AuditLogs;
+use App\Livewire\Billing;
 use App\Livewire\Bots;
 use App\Livewire\Campaigns;
 use App\Livewire\Contents;
@@ -21,10 +25,14 @@ use App\Livewire\Settings;
 use App\Livewire\SystemHealth;
 use App\Livewire\Tags;
 use App\Livewire\Users;
+use App\Models\Plan;
 use App\Support\Permissions as P;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/branding/logo', BrandingLogoController::class)->name('branding.logo');
+
+// Public plan list (visitors and signed-in users).
+Route::get('/pricing', fn () => view('pricing', ['plans' => Plan::query()->forSale()->get()]))->name('pricing');
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +43,9 @@ Route::get('/branding/logo', BrandingLogoController::class)->name('branding.logo
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
     Route::post('/login', [LoginController::class, 'store'])->middleware('throttle:10,1')->name('login.store');
+
+    Route::get('/register', [RegisterController::class, 'create'])->name('register');
+    Route::post('/register', [RegisterController::class, 'store'])->middleware('throttle:5,1')->name('register.store');
 
     Route::get('/forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
     Route::post('/forgot-password', [PasswordResetController::class, 'email'])->middleware('throttle:5,1')->name('password.email');
@@ -88,6 +99,17 @@ Route::middleware(['auth', 'active'])->group(function () {
     // System
     Route::livewire('/settings', Settings\Index::class)->middleware('can:'.P::SETTINGS_MANAGE)->name('settings.index');
     Route::livewire('/system-health', SystemHealth\Index::class)->middleware('can:'.P::SYSTEM_HEALTH)->name('system-health');
+
+    // Billing (every signed-in user; customers buy plans here)
+    Route::livewire('/billing', Billing\Index::class)->name('billing.index');
+    Route::livewire('/billing/checkout/{plan}', Billing\Checkout::class)->name('billing.checkout');
+    Route::get('/billing/requests/{order}/proof', [BillingFileController::class, 'proof'])->name('billing.proof');
+    Route::get('/payment-methods/{paymentMethod}/qr', [BillingFileController::class, 'qr'])->name('payment-methods.qr');
+
+    // Sales administration
+    Route::livewire('/admin/purchase-requests', Admin\Orders::class)->middleware('can:'.P::ORDERS_MANAGE)->name('admin.orders.index');
+    Route::livewire('/admin/plans', Admin\Plans::class)->middleware('can:'.P::PLANS_MANAGE)->name('admin.plans.index');
+    Route::livewire('/admin/payment-methods', Admin\PaymentMethods::class)->middleware('can:'.P::PLANS_MANAGE)->name('admin.payment-methods.index');
 
     // Help (available to every signed-in user)
     Route::livewire('/help', Help\Guide::class)->name('help.guide');

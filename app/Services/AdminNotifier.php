@@ -10,22 +10,65 @@ use Illuminate\Support\Facades\Notification;
 use Throwable;
 
 /**
- * Sends AdminAlert notifications to every active user allowed to see campaigns.
+ * Delivers AdminAlert notifications.
+ *
+ * Alerts about a customer's bots and campaigns go to that customer only;
+ * alerts about staff-owned data go to staff who can see campaigns.
  */
 class AdminNotifier
 {
     public function __construct(private readonly SettingsService $settings) {}
 
-    public function send(AdminAlert $alert): void
+    /**
+     * An alert about data owned by $ownerId (a bot, destination or campaign).
+     */
+    public function send(AdminAlert $alert, ?int $ownerId = null): void
+    {
+        $owner = $ownerId ? User::query()->with('role')->find($ownerId) : null;
+
+        if ($owner && $owner->isCustomer()) {
+            $this->toUser($owner, $alert);
+
+            return;
+        }
+
+        $this->toStaff($alert, Permissions::CAMPAIGNS_VIEW);
+    }
+
+    /**
+     * Every active staff member holding $permission.
+     */
+    public function toStaff(AdminAlert $alert, string $permission): void
     {
         try {
             $recipients = User::query()->active()->with('role')->get()
-                ->filter(fn (User $user) => $user->hasPermission(Permissions::CAMPAIGNS_VIEW));
+                ->filter(fn (User $user) => $user->seesAllAccounts() && $user->hasPermission($permission));
+        } catch (Throwable $e) {
+            Log::warning('Admin notification failed', ['category' => $alert->category, 'error' => $e->getMessage()]);
 
-            if ($recipients->isEmpty()) {
-                return;
-            }
+            return;
+        }
 
+        $this->deliver($recipients->all(), $alert);
+    }
+
+    public function toUser(User $user, AdminAlert $alert): void
+    {
+        if ($user->isActive()) {
+            $this->deliver([$user], $alert);
+        }
+    }
+
+    /**
+     * @param  list<User>|array<int, User>  $recipients
+     */
+    private function deliver(array $recipients, AdminAlert $alert): void
+    {
+        if ($recipients === []) {
+            return;
+        }
+
+        try {
             $alert->channels = $this->channels();
             Notification::send($recipients, $alert);
         } catch (Throwable $e) {

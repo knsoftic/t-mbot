@@ -7,6 +7,7 @@ use App\Livewire\Concerns\InteractsWithUi;
 use App\Services\Ai\AiException;
 use App\Services\Ai\PostWriter;
 use App\Services\AuditLogger;
+use App\Services\BillingService;
 use App\Services\SettingsService;
 use App\Support\Permissions;
 use Illuminate\Support\Arr;
@@ -93,6 +94,15 @@ class Index extends Component
             'form.ai.enabled' => ['boolean'],
             'form.ai.model' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9._:\/-]+$/'],
             'form.ai.default_language' => ['required', 'in:'.implode(',', array_keys(PostWriter::LANGUAGES))],
+            'form.registration.enabled' => ['boolean'],
+            'form.registration.phone' => ['required', 'in:'.implode(',', array_keys(BillingService::FIELD_MODES))],
+            'form.billing.contact_name' => ['required', 'in:'.implode(',', array_keys(BillingService::FIELD_MODES))],
+            'form.billing.contact_email' => ['required', 'in:'.implode(',', array_keys(BillingService::FIELD_MODES))],
+            'form.billing.contact_phone' => ['required', 'in:'.implode(',', array_keys(BillingService::FIELD_MODES))],
+            'form.billing.contact_whatsapp' => ['required', 'in:'.implode(',', array_keys(BillingService::FIELD_MODES))],
+            'form.billing.instructions' => ['nullable', 'string', 'max:2000'],
+            'form.billing.support_whatsapp' => ['nullable', 'string', 'max:30', 'regex:'.BillingService::PHONE_PATTERN],
+            'form.billing.support_email' => ['nullable', 'email', 'max:191'],
             'form.notifications.mail_enabled' => ['boolean'],
             'form.notifications.failure_threshold' => ['required', 'integer', 'min:2', 'max:50'],
             'form.storage.media_disk' => ['required', 'in:local'.(self::s3Available() ? ',s3' : '')],

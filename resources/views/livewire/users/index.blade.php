@@ -1,5 +1,5 @@
 <div>
-    <x-page-header title="Administrators" description="People who can sign in to the admin panel.">
+    <x-page-header title="Users" description="Staff (Super Admin / Admin) and customer accounts. Customers only see their own data and are limited by their plan.">
         <x-slot:actions>
             <button type="button" wire:click="create" class="btn btn-primary"><x-icon name="plus" class="size-4" /> Add user</button>
         </x-slot:actions>
@@ -19,7 +19,7 @@
         </div>
         <div class="table-wrap">
             <table class="data-table">
-                <thead><tr><th>User</th><th>Role</th><th>Status</th><th class="hidden md:table-cell">Last login</th><th class="text-right">Actions</th></tr></thead>
+                <thead><tr><th>User</th><th>Role</th><th>Plan</th><th>Status</th><th class="hidden md:table-cell">Last login</th><th class="text-right">Actions</th></tr></thead>
                 <tbody>
                     @forelse ($users as $user)
                         <tr wire:key="u-{{ $user->id }}">
@@ -28,6 +28,16 @@
                                 <div class="text-xs text-slate-500">{{ $user->email }}</div>
                             </td>
                             <td><x-badge :color="$user->isSuperAdmin() ? 'indigo' : 'slate'">{{ $user->role?->name ?? 'No role' }}</x-badge></td>
+                            <td class="text-xs">
+                                @if ($user->isCustomer())
+                                    <div class="font-medium text-slate-700 dark:text-slate-200">{{ $user->currentPlan()?->name ?? '—' }}</div>
+                                    @if ($user->plan_expires_at)
+                                        <div @class(['text-red-600' => $user->planExpired(), 'text-slate-500' => ! $user->planExpired()])>{{ $user->planExpired() ? 'expired' : 'until' }} {{ display_time($user->plan_expires_at, 'd M Y') }}</div>
+                                    @endif
+                                @else
+                                    <span class="text-slate-400">Staff · no limits</span>
+                                @endif
+                            </td>
                             <td><x-status :value="$user->status" /></td>
                             <td class="hidden text-xs text-slate-500 md:table-cell">
                                 {{ $user->last_login_at ? display_time($user->last_login_at, 'M j, g:i A') : 'Never' }}
@@ -40,6 +50,9 @@
                                         <div class="relative" x-data="{ open: false }" x-on:click.outside="open = false">
                                             <button type="button" class="btn-icon" x-on:click="open = !open" title="More"><x-icon name="dots" class="size-4" /></button>
                                             <div x-show="open" x-cloak x-transition class="dropdown w-52">
+                                                @if ($user->isCustomer() && auth()->user()->can('orders.manage'))
+                                                    <button type="button" wire:click="openPlan({{ $user->id }})" class="dropdown-item"><x-icon name="credit-card" class="size-4" /> Change plan</button>
+                                                @endif
                                                 <button type="button" wire:click="openPassword({{ $user->id }})" class="dropdown-item"><x-icon name="key" class="size-4" /> Set new password</button>
                                                 <button type="button" wire:click="sendResetLink({{ $user->id }})" class="dropdown-item"><x-icon name="send" class="size-4" /> E-mail reset link</button>
                                                 @if ($user->id !== auth()->id())
@@ -55,7 +68,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5"><x-empty icon="users" title="No users found" /></td></tr>
+                        <tr><td colspan="6"><x-empty icon="users" title="No users found" /></td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -107,6 +120,28 @@
         <x-slot:footer>
             <button type="button" class="btn btn-secondary" x-on:click="show = false">Cancel</button>
             <button type="submit" form="pw-form" class="btn btn-primary">Set password</button>
+        </x-slot:footer>
+    </x-modal>
+
+    <x-modal wire:model="showPlan" title="Change plan" max-width="md">
+        <form wire:submit="savePlan" id="plan-change-form" class="space-y-4">
+            <x-field label="Plan" for="planId" required>
+                <select id="planId" wire:model.live="planId" class="input">
+                    @foreach ($plans as $p)
+                        <option value="{{ $p->id }}">{{ $p->name }} ({{ $p->formattedPrice() }}{{ $p->is_default ? ', default' : '' }})</option>
+                    @endforeach
+                </select>
+            </x-field>
+            @unless ($plans->firstWhere('id', (int) $planId)?->is_default)
+                <x-field label="Valid until (last day)" for="planExpires" required hint="After this day the account moves back to the default plan.">
+                    <input id="planExpires" type="date" wire:model="planExpires" class="input">
+                </x-field>
+            @endunless
+            <p class="text-xs text-slate-500">Use this for gifts, corrections or payments received outside the panel. Normal purchases are activated from Purchase requests.</p>
+        </form>
+        <x-slot:footer>
+            <button type="button" class="btn btn-secondary" x-on:click="show = false">Cancel</button>
+            <button type="submit" form="plan-change-form" class="btn btn-primary" wire:loading.attr="disabled" wire:target="savePlan">Save plan</button>
         </x-slot:footer>
     </x-modal>
 </div>

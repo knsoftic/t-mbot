@@ -24,6 +24,7 @@ class ContentService
         private readonly SettingsService $settings,
         private readonly MediaUrlValidator $urlValidator,
         private readonly AuditLogger $audit,
+        private readonly PlanLimiter $limiter,
     ) {}
 
     /**
@@ -85,8 +86,12 @@ class ContentService
      */
     public function create(array $data, ?UploadedFile $upload = null, ?User $user = null): Content
     {
+        $this->limiter->assertCanAdd($user, 'max_contents', 'title');
+        $this->assertUploadAllowed($user?->id, $upload);
+
         $content = DB::transaction(function () use ($data, $upload, $user) {
             $content = new Content($this->attributes($data));
+            $content->user_id = $user?->id;
             $content->created_by = $user?->id;
 
             if ($upload) {
@@ -94,7 +99,7 @@ class ContentService
             }
 
             $content->save();
-            $content->tags()->sync(Tag::idsFor($data['tags'] ?? []));
+            $content->tags()->sync(Tag::idsFor($data['tags'] ?? [], $content->user_id));
 
             return $content;
         });
@@ -109,6 +114,8 @@ class ContentService
      */
     public function update(Content $content, array $data, ?UploadedFile $upload = null, ?User $user = null): Content
     {
+        $this->assertUploadAllowed($content->user_id, $upload);
+
         DB::transaction(function () use ($content, $data, $upload) {
             $content->fill($this->attributes($data));
 
@@ -122,7 +129,7 @@ class ContentService
             }
 
             $content->save();
-            $content->tags()->sync(Tag::idsFor($data['tags'] ?? []));
+            $content->tags()->sync(Tag::idsFor($data['tags'] ?? [], $content->user_id));
         });
 
         $this->audit->log('content.updated', $content, "Content \"{$content->title}\" edited", $this->audit->changes($content), $user);
@@ -132,6 +139,9 @@ class ContentService
 
     public function duplicate(Content $content, ?User $user = null): Content
     {
+        // The copy stays in the same account as the original.
+        $this->limiter->assertCanAdd($content->user_id, 'max_contents', 'content');
+
         $copy = DB::transaction(function () use ($content, $user) {
             $copy = $content->replicate(['created_by']);
             $copy->title = Str::limit($content->title, 190, '').' (copy)';
@@ -205,6 +215,25 @@ class ContentService
             'disable_web_page_preview' => (bool) ($data['disable_web_page_preview'] ?? false),
             'protect_content' => (bool) ($data['protect_content'] ?? false),
         ] + ($source !== ContentSource::Upload ? ['media_path' => null, 'media_disk' => null, 'media_mime' => null, 'media_size' => null] : []);
+    }
+
+    /**
+     * Uploads must be part of the account's plan and within its size limit.
+     */
+    private function assertUploadAllowed(?int $ownerId, ?UploadedFile $upload): void
+    {
+        if ($upload === null) {
+            return;
+        }
+
+        $this->limiter->assertFeature($ownerId, 'allow_uploads', 'upload');
+        $maxKb = $this->limiter->maxUploadKilobytes($ownerId);
+
+        if ($maxKb !== null && $upload->getSize() > $maxKb * 1024) {
+            throw ValidationException::withMessages([
+                'upload' => 'Your plan allows uploads up to '.round($maxKb / 1024).' MB. Use a smaller file, a media URL, or upgrade your plan.',
+            ]);
+        }
     }
 
     private function storeUpload(Content $content, UploadedFile $upload): void

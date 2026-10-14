@@ -14,8 +14,14 @@ class RolesAndPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
+        $new = [];
+
         foreach (Permissions::definitions() as $slug => $definition) {
-            Permission::query()->updateOrCreate(['slug' => $slug], $definition);
+            $permission = Permission::query()->updateOrCreate(['slug' => $slug], $definition);
+
+            if ($permission->wasRecentlyCreated) {
+                $new[] = $slug;
+            }
         }
 
         Role::query()->updateOrCreate(
@@ -25,12 +31,30 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $admin = Role::query()->firstOrCreate(
             ['slug' => Role::ADMIN],
-            ['name' => 'Admin', 'description' => 'Manages bots, destinations, content, campaigns and logs.', 'is_system' => true],
+            ['name' => 'Admin', 'description' => 'Manages every account\'s bots, destinations, content, campaigns and logs, and handles purchase requests.', 'is_system' => true],
         );
 
-        // Only seed the Admin defaults the first time, so edits made in the UI are kept.
-        if ($admin->wasRecentlyCreated) {
-            $admin->permissions()->sync(Permission::query()->whereIn('slug', Permissions::adminDefaults())->pluck('id'));
+        $customer = Role::query()->firstOrCreate(
+            ['slug' => Role::CUSTOMER],
+            ['name' => 'Customer', 'description' => 'Registered user: manages only their own bots, channels, content and campaigns within their plan.', 'is_system' => true],
+        );
+
+        // Defaults are applied once, so edits made in the UI are kept; permissions
+        // added by a later release are still given to the built-in roles.
+        $this->grant($admin, Permissions::adminDefaults(), $new);
+        $this->grant($customer, Permissions::customerDefaults(), $new);
+    }
+
+    /**
+     * @param  list<string>  $defaults
+     * @param  list<string>  $newPermissions
+     */
+    private function grant(Role $role, array $defaults, array $newPermissions): void
+    {
+        $slugs = $role->wasRecentlyCreated ? $defaults : array_values(array_intersect($defaults, $newPermissions));
+
+        if ($slugs !== []) {
+            $role->permissions()->syncWithoutDetaching(Permission::query()->whereIn('slug', $slugs)->pluck('id'));
         }
     }
 }
